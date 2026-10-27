@@ -1,0 +1,7 @@
+{
+  "system_id": "B4",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "mode": "streaming",
+  "context_prompt": false,
+  "description": "0.6B streaming: latency lower bound"
+}

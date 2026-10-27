@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# audio / large artifacts are distributed via Hugging Face Datasets
+data/eval/audio/
+data/raw/
+*.wav
+*.flac
+*.mp3
+
+# local run outputs
+runs/
+*.log
+.ipynb_checkpoints/

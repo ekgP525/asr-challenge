@@ -1,0 +1,13 @@
+{
+  "sample_rate": 16000,
+  "chunk_ms": 500,
+  "vad": {
+    "threshold": 0.5,
+    "min_silence_duration_ms": 300,
+    "speech_pad_ms": 30,
+    "window_size_samples": 512
+  },
+  "warmup_utterances": 3,
+  "repeats": 3,
+  "latency_constraint_p90_sec": 1.0
+}

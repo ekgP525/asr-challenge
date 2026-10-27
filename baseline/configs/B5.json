@@ -1,0 +1,8 @@
+{
+  "system_id": "B5",
+  "model": "Qwen/Qwen3-ASR-1.7B",
+  "mode": "offline",
+  "context_prompt": true,
+  "context_file": "data/terms.txt",
+  "description": "1.7B offline + academic-term context prompt: Term Recall gain without fine-tuning"
+}

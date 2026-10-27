@@ -1,0 +1,20 @@
+# Accuracy evaluation (evaluation/normalizer.py, metrics.py, evaluate.py, make_leaderboard.py)
+# needs only the standard library. Everything below is for Track B latency
+# measurement, baseline inference, and dataset construction.
+
+# --- latency measurement / audio I/O ---
+silero-vad==6.2.3
+soundfile==0.13.1
+librosa==0.11.0
+numpy>=1.26
+scipy>=1.11
+
+# --- baselines (Qwen3-ASR, vLLM backend for streaming) ---
+# torch / vllm / transformers are installed by the Colab notebook for the
+# measurement GPU (L4). Their exact versions are recorded per run in
+# runs/<system>/environment.json and embedded in results/*.json.
+qwen-asr[vllm]==0.0.6
+
+# --- plots / tests ---
+matplotlib>=3.8
+pytest>=8.0
