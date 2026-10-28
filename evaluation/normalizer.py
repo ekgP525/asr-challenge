@@ -3,7 +3,8 @@
 Rules (fixed for the challenge; do not change without bumping the version):
 
 1. Unicode NFC normalization.
-2. Percent sign -> '퍼센트'.
+2. Percent sign -> '퍼센트'; colloquial decimal-point spelling '쩜' -> '점'
+   (zeroth-korean transcripts write "삼 쩜 삼").
 3. Arabic numerals -> Sino-Korean reading (일, 이, 삼 ... 십, 백, 천, 만, 억).
    - "2026" -> "이천이십육", "10" -> "십", "1학년" -> "일학년"
    - Thousands separators are dropped first: "1,000" -> "천"
@@ -27,7 +28,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-NORMALIZER_VERSION = "1.0"
+NORMALIZER_VERSION = "1.1"
 
 _DIGITS = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"]
 _DIGIT_ZERO = "공"
@@ -103,7 +104,7 @@ def _strip_punct(text: str) -> str:
 def normalize(text: str) -> str:
     """Full normalization, single spaces kept."""
     text = unicodedata.normalize("NFC", text)
-    text = text.replace("%", "퍼센트")
+    text = text.replace("%", "퍼센트").replace("쩜", "점")
     text = convert_numbers(text)
     text = text.upper()
     text = _strip_punct(text)

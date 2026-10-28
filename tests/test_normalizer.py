@@ -30,6 +30,10 @@ def test_normalize_full():
     assert normalize_nospace("재 수강 !!") == "재수강"
 
 
+def test_decimal_point_spelling_unified():
+    assert normalize_nospace("삼 쩜 삼 제곱미터") == normalize_nospace("3.3 제곱미터")
+
+
 def test_normalize_idempotent():
     s = "복학 신청은 2월 말까지 입니다."
     assert normalize(normalize(s)) == normalize(s)

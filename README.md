@@ -60,9 +60,9 @@ python evaluation/make_leaderboard.py
 외부 시스템을 평가하려면 예측 파일만 이 형식으로 만들면 된다(Track A). Track B까지 포함하려면
 `evaluation/latency.py`의 `OfflineSystem` / `StreamingSystem` 인터페이스를 구현해 같은 시뮬레이터로 측정한다.
 
-### 정규화 규칙 (`evaluation/normalizer.py`, v1.0)
+### 정규화 규칙 (`evaluation/normalizer.py`, v1.1)
 
-1. NFC 정규화, `%` → `퍼센트`
+1. NFC 정규화, `%` → `퍼센트`, 소수점 구어 표기 `쩜` → `점`
 2. 아라비아 숫자 → 한자어 숫자 읽기 (`2026` → `이천이십육`, `1,000` → `천`, `3.5` → `삼점오`, 선행 0은 자리별 읽기 `031` → `공삼일`)
 3. 영문자 대문자 통일
 4. 문장부호·기호 제거, 연속 공백 1개로
