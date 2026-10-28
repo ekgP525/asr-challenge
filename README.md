@@ -25,11 +25,11 @@ baseline/
   run_qwen3_asr.py        Qwen3-ASR 1.7B/0.6B × offline/streaming (B1~B4)
   configs/B1..B4.json
 data/
-  eval/                   manifest_clean_<source>.jsonl (클린 중간), manifest.jsonl (최종), clean_subset_ids.txt
+  eval/                   manifest_clean_<source>.jsonl (클린 중간), manifest.jsonl (최종), clean_subset_ids_<source>.txt
   noise_list.csv          사용 잡음 파일 + 개별 라이선스 (TBD)
   LICENSES/               Zeroth, FLEURS, MUSAN, FSD50K 출처 표기 (TBD)
   scripts/
-    select_subset.py      Zeroth(·FLEURS) test에서 발화 추출 + VAD 정답 구간
+    select_subset.py      Zeroth·FLEURS test에서 발화 추출 + VAD 정답 구간
     filter_noise.py       FSD50K CC0·CC BY 필터, 범주 선택 (TBD)
     mix_noise.py          P.56 기준 SNR 4조건 합성, 앞뒤 1 s 잡음 패딩, 시드 고정 (TBD)
     common.py
@@ -99,7 +99,7 @@ Colab, NVIDIA L4 고정. GPU·CUDA·torch/transformers/vLLM/qwen-asr 버전은 �
 
 ## 데이터·라이선스
 
-- 원본 음성: [zeroth-korean](https://huggingface.co/datasets/kresnik/zeroth_korean) test (CC BY 4.0), FLEURS ko_kr test (CC BY 4.0, TBD)
+- 원본 음성: [zeroth-korean](https://huggingface.co/datasets/kresnik/zeroth_korean) test 250발화, [FLEURS](https://huggingface.co/datasets/google/fleurs) ko_kr test 174발화 (둘 다 CC BY 4.0)
 - 잡음: MUSAN, FSD50K 중 CC0·CC BY 클립만 (파일별 라이선스는 `data/noise_list.csv`)
 - AI Hub 자료는 재배포 금지라 사용하지 않음
 - Qwen3-ASR 기술 보고서가 한국어를 FLEURS로 평가했으므로 Clean 점수는 기준점으로만 보고, 잡음 조건에서의 하락폭을 중심으로 해석한다.
