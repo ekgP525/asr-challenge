@@ -5,6 +5,11 @@ Protocol (identical for every system):
 * Audio is fed to the ASR in fixed-size chunks (default 0.5 s). Chunk i becomes
   available at stream time (i+1)*chunk; a virtual clock advances to that arrival
   time and then by the *measured wall-clock* cost of every VAD / model call.
+* The ASR is VAD-gated, as in a deployed assistant: nothing is sent to the model
+  until the endpointer reports speech start; the audio handed over begins
+  `preroll_ms` before that start (streaming: the buffered audio from there to the
+  end of the current chunk is the first push). Without gating, prefix-conditioned
+  streaming recognizers lock in text hallucinated on the leading silence.
 * The endpointer runs on 32 ms frames, so when it fires inside a chunk the
   detection is timed at that frame's arrival, not at the chunk boundary, and only
   the audio up to that frame is delivered to the ASR (offline: as the segment;
@@ -70,6 +75,7 @@ class UttRecord:
     audio_duration: float
     speech_start: float
     speech_end: float
+    vad_start: Optional[float]        # speech start reported by the VAD (stream s, None = never)
     vad_end: Optional[float]          # stream time when the endpointer fired (None = never)
     t_final: float                    # stream time when the final text was available
     t_first_partial: Optional[float]  # stream time of the first non-empty partial
@@ -102,28 +108,31 @@ class SileroEndpointer:
     def reset(self):
         self.it.reset_states()
         self._buf = None
+        self.pos = 0            # samples consumed by the VAD (absolute stream position)
         self.speech_started = False
 
-    def feed(self, chunk) -> Optional[int]:
-        """Feed a float32 chunk. Returns the sample offset *within the chunk* at which
-        speech end was detected, or None."""
+    def feed(self, chunk) -> dict:
+        """Feed a float32 chunk. Returns {"start": abs_sample | None, "end_detect": abs_sample | None}:
+        `start` is the speech start reported by the VAD (already moved back by speech_pad),
+        `end_detect` is the absolute position of the frame at which the end was detected."""
         import numpy as np
         import torch
 
-        consumed_before = 0 if self._buf is None else len(self._buf)
         self._buf = chunk if self._buf is None else np.concatenate([self._buf, chunk])
-        pos = 0
-        fired_at = None
-        while len(self._buf) - pos >= self.window:
-            win = self._buf[pos: pos + self.window]
-            pos += self.window
+        out = {"start": None, "end_detect": None}
+        i = 0
+        while len(self._buf) - i >= self.window:
+            win = self._buf[i: i + self.window]
+            i += self.window
+            self.pos += self.window
             ev = self.it(torch.from_numpy(np.ascontiguousarray(win)), return_seconds=False)
-            if ev and "start" in ev:
+            if ev and "start" in ev and not self.speech_started:
                 self.speech_started = True
-            if ev and "end" in ev and fired_at is None:
-                fired_at = pos - consumed_before  # offset inside this chunk
-        self._buf = self._buf[pos:]
-        return fired_at
+                out["start"] = int(ev["start"])
+            if ev and "end" in ev and out["end_detect"] is None:
+                out["end_detect"] = self.pos
+        self._buf = self._buf[i:]
+        return out
 
 
 # --------------------------------------------------------------------------- #
@@ -160,30 +169,38 @@ def run_offline(audio, sr: int, utt: dict, system: OfflineSystem, cfg: dict,
     vad.reset()
     clk = _Clock()
     duration = len(audio) / sr
+    preroll = int(cfg.get("preroll_ms", 0) * sr / 1000)
     fed = 0
-    vad_end = None
+    start_sample = None
     end_sample = len(audio)
+    vad_end = None
     for chunk in iter_chunks(audio, sr, cfg["chunk_ms"]):
-        start = fed
         fed += len(chunk)
         w0 = time.perf_counter()
-        off = vad.feed(chunk)
-        if off is not None:
-            end_sample = start + off
+        ev = vad.feed(chunk)
+        if ev["start"] is not None:
+            start_sample = ev["start"]
+        if ev["end_detect"] is not None:
+            end_sample = ev["end_detect"]
             vad_end = end_sample / sr
             clk.arrive(vad_end)        # the frame that triggered the endpoint has just arrived
             clk.spend(w0)
             break
         clk.arrive(fed / sr)
         clk.spend(w0)
-    segment = np.asarray(audio[:end_sample])
+    if start_sample is None:           # VAD never saw speech: nothing is sent to the model
+        return UttRecord(id=utt["id"], audio_duration=duration, speech_start=utt["speech_start"],
+                         speech_end=utt["speech_end"], vad_start=None, vad_end=vad_end, t_final=clk.t,
+                         t_first_partial=None, processing_time=0.0, partials=[], text="")
+    seg0 = max(0, start_sample - preroll)
+    segment = np.asarray(audio[seg0:end_sample])
     w0 = time.perf_counter()
     text = system.transcribe(segment, sr)
     infer = clk.spend(w0)
     return UttRecord(
         id=utt["id"], audio_duration=duration,
         speech_start=utt["speech_start"], speech_end=utt["speech_end"],
-        vad_end=vad_end, t_final=clk.t, t_first_partial=None,
+        vad_start=start_sample / sr, vad_end=vad_end, t_final=clk.t, t_first_partial=None,
         processing_time=infer,
         partials=[{"t": clk.t, "text": text}], text=text,
     )
@@ -195,7 +212,9 @@ def run_streaming(audio, sr: int, utt: dict, system: StreamingSystem, cfg: dict,
     system.reset()
     clk = _Clock()
     duration = len(audio) / sr
+    preroll = int(cfg.get("preroll_ms", 0) * sr / 1000)
     fed = 0
+    start_sample = None
     vad_end = None
     partials: List[dict] = []
     last = ""
@@ -206,24 +225,38 @@ def run_streaming(audio, sr: int, utt: dict, system: StreamingSystem, cfg: dict,
             partials.append({"t": clk.t, "text": partial})
             last = partial
 
+    def push(a, b):
+        nonlocal last
+        if b <= a:
+            return
+        w0 = time.perf_counter()
+        emit(system.push(audio[a:b], sr))
+        clk.spend(w0)
+
     for chunk in iter_chunks(audio, sr, cfg["chunk_ms"]):
-        start = fed
+        c0 = fed
         fed += len(chunk)
         w0 = time.perf_counter()
-        off = vad.feed(chunk)
-        if off is not None:
-            vad_end = (start + off) / sr
+        ev = vad.feed(chunk)
+        gate_open_at = None
+        if ev["start"] is not None and start_sample is None:
+            start_sample = ev["start"]
+            gate_open_at = max(0, start_sample - preroll)   # first push starts here (buffered audio)
+        if ev["end_detect"] is not None:
+            vad_end = ev["end_detect"] / sr
             clk.arrive(vad_end)
             clk.spend(w0)
-            w0 = time.perf_counter()
-            emit(system.push(chunk[:off], sr))   # only the audio up to the detected end
-            clk.spend(w0)
+            if start_sample is not None:
+                push(gate_open_at if gate_open_at is not None else c0, ev["end_detect"])
             break
         clk.arrive(fed / sr)
         clk.spend(w0)
-        w0 = time.perf_counter()
-        emit(system.push(chunk, sr))
-        clk.spend(w0)
+        if start_sample is not None:
+            push(gate_open_at if gate_open_at is not None else c0, fed)
+    if start_sample is None:
+        return UttRecord(id=utt["id"], audio_duration=duration, speech_start=utt["speech_start"],
+                         speech_end=utt["speech_end"], vad_start=None, vad_end=vad_end, t_final=clk.t,
+                         t_first_partial=None, processing_time=0.0, partials=[], text="")
     w0 = time.perf_counter()
     text = system.finalize()
     clk.spend(w0)
@@ -232,7 +265,7 @@ def run_streaming(audio, sr: int, utt: dict, system: StreamingSystem, cfg: dict,
     return UttRecord(
         id=utt["id"], audio_duration=duration,
         speech_start=utt["speech_start"], speech_end=utt["speech_end"],
-        vad_end=vad_end, t_final=clk.t, t_first_partial=first,
+        vad_start=start_sample / sr, vad_end=vad_end, t_final=clk.t, t_first_partial=first,
         processing_time=clk.busy, partials=partials, text=text,
     )
 

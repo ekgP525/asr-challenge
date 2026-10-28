@@ -3,6 +3,8 @@
 Per condition:
   p50 / p90            final latency = t_final - speech_end (s)
   endpoint             median of (vad_end - speech_end) (s); vad_end = audio end when VAD never fired
+  start_err            median of (vad_start - speech_start) (s), utterances where the VAD fired
+  missed               % of utterances where the VAD never reported speech start (nothing transcribed)
   early_cut            % of utterances with vad_end < speech_end
   revision             % of partial updates that rewrote already-shown text (streaming only)
   first_partial        median of (t_first_partial - speech_start) (s), streaming only
@@ -64,6 +66,8 @@ def summarize(records: List[dict], streaming: Optional[bool] = None) -> dict:
                         for r in records)
     finals = [final_latency(r) for r in records]
     ends = [endpoint_error(r) for r in records]
+    starts = [r["vad_start"] - r["speech_start"] for r in records if r.get("vad_start") is not None]
+    missed = sum(1 for r in records if r.get("vad_start") is None)
     early = sum(1 for e in ends if e < 0)
     audio = sum(r["audio_duration"] for r in records)
     proc = sum(r["processing_time"] for r in records)
@@ -72,6 +76,8 @@ def summarize(records: List[dict], streaming: Optional[bool] = None) -> dict:
         "p50": round(percentile(finals, 50), 4),
         "p90": round(percentile(finals, 90), 4),
         "endpoint": round(statistics.median(ends), 4),
+        "start_err": round(statistics.median(starts), 4) if starts else None,
+        "missed": round(100.0 * missed / len(records), 2),
         "early_cut": round(100.0 * early / len(records), 2),
         "revision": None,
         "first_partial": None,

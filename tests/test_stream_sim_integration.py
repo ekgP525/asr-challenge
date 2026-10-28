@@ -50,6 +50,7 @@ def test_simulator_with_silero_vad():
     vad = SileroEndpointer(cfg)
 
     r = run_offline(audio, sr, utt, Echo(), cfg, vad)
+    assert r.vad_start is not None and abs(r.vad_start - utt["speech_start"]) < 0.3
     assert r.vad_end is not None and r.vad_end >= utt["speech_end"] - 0.1
     assert r.vad_end - utt["speech_end"] < 1.0           # detected inside the 1 s tail
     assert r.text == "오프라인 결과" and len(r.partials) == 1
@@ -57,6 +58,8 @@ def test_simulator_with_silero_vad():
     r2 = run_streaming(audio, sr, utt, Echo(), cfg, vad)
     assert r2.vad_end is not None
     assert r2.t_first_partial is not None
+    # VAD-gated: the first push happens at or after the chunk in which speech started
+    assert r2.t_first_partial >= utt["speech_start"] - 0.5
     assert r2.partials[-1]["text"].endswith("끝")
     assert len(r2.partials) >= 3
     # virtual clock: final time is at least the arrival of the chunk where VAD fired

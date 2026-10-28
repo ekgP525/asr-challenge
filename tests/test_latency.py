@@ -2,7 +2,7 @@ from evaluation.latency import endpoint_error, final_latency, percentile, revisi
 
 
 def rec(**kw):
-    base = dict(id="u", audio_duration=6.0, speech_start=1.0, speech_end=5.0, vad_end=5.35,
+    base = dict(id="u", audio_duration=6.0, speech_start=1.0, speech_end=5.0, vad_start=1.05, vad_end=5.35,
                 t_final=5.8, t_first_partial=None, processing_time=0.4, partials=[], text="")
     base.update(kw)
     return base
@@ -45,6 +45,8 @@ def test_summarize_offline():
     assert s["revision"] is None and s["first_partial"] is None
     assert s["rtfx"] == 15.0
     assert s["p90"] == 0.8
+    assert abs(s["start_err"] - 0.05) < 1e-9 and s["missed"] == 0.0
+    assert summarize([rec(vad_start=None)], streaming=False)["missed"] == 100.0
 
 
 def test_summarize_streaming():

@@ -10,7 +10,7 @@ Output (same structure the challenge page embeds as RESULTS):
 {
   "system_id", "model", "mode", "hardware", "rtfx",
   "cond": {"clean"|"snr20"|"snr10"|"snr5"|"snr0":
-           {"cer", "p50", "p90", "endpoint", "early_cut", "revision", "first_partial", "n"}},
+           {"cer", "p50", "p90", "start_err", "endpoint", "missed", "early_cut", "revision", "first_partial", "premature_partial", "n"}},
   "noisy_avg": {"cer", "p90"}, "meets_latency_constraint", "by_source": {...}, ...
 }
 Units: cer / early_cut / revision in %, p50 / p90 / endpoint / first_partial in seconds.
@@ -70,7 +70,7 @@ def score(manifest, preds, records, mode, limit):
         if rec_by.get(c):
             s = summarize(rec_by[c], streaming)
             row.update({k: s[k] for k in ("p50", "p90", "endpoint", "early_cut", "revision",
-                                          "first_partial", "premature_partial")})
+                                          "first_partial", "premature_partial", "start_err", "missed")})
             row["rtfx"] = s["rtfx"]
             row["n_latency"] = s["n"]
         cond_out[c] = row
@@ -143,11 +143,11 @@ def main(argv=None):
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     print(f"[{cfg['system_id']}] {cfg['model']} ({cfg['mode']}) -> {out}")
-    print(f"  {'cond':7s} {'CER%':>6s} {'p50':>6s} {'p90':>6s} {'endpt':>6s} {'early%':>6s} {'rev%':>6s} {'first':>6s} {'prem%':>6s}")
+    print(f"  {'cond':7s} {'CER%':>6s} {'p50':>6s} {'p90':>6s} {'start':>6s} {'endpt':>6s} {'miss%':>6s} {'early%':>6s} {'rev%':>6s} {'first':>6s} {'prem%':>6s}")
     for c, r in cond.items():
         f = lambda v, nd=2: "-" if v is None else f"{v:.{nd}f}"
-        print(f"  {c:7s} {f(r['cer']):>6s} {f(r['p50'],3):>6s} {f(r['p90'],3):>6s} {f(r['endpoint'],3):>6s} "
-              f"{f(r['early_cut'],1):>6s} {f(r['revision'],1):>6s} {f(r['first_partial'],3):>6s} {f(r['premature_partial'],1):>6s}")
+        print(f"  {c:7s} {f(r['cer']):>6s} {f(r['p50'],3):>6s} {f(r['p90'],3):>6s} {f(r.get('start_err'),3):>6s} {f(r['endpoint'],3):>6s} "
+              f"{f(r.get('missed'),1):>6s} {f(r['early_cut'],1):>6s} {f(r['revision'],1):>6s} {f(r['first_partial'],3):>6s} {f(r['premature_partial'],1):>6s}")
     if noisy_avg:
         print(f"  noisy avg CER {noisy_avg['cer']}%  avg p90 {noisy_avg.get('p90')}  "
               f"constraint {'OK' if meets else ('FAIL' if meets is False else 'n/a')}  RTFx {rtfx}")

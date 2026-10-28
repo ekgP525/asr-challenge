@@ -17,7 +17,7 @@ def utt(i, cond, text):
 
 
 def lat(uid, vad_end, t_final, partials=None):
-    return {"id": uid, "audio_duration": 5.0, "speech_start": 1.0, "speech_end": 4.0, "vad_end": vad_end,
+    return {"id": uid, "audio_duration": 5.0, "speech_start": 1.0, "speech_end": 4.0, "vad_start": 1.1, "vad_end": vad_end,
             "t_final": t_final, "t_first_partial": 1.6 if partials else None, "processing_time": 0.5,
             "partials": partials or [], "text": ""}
 

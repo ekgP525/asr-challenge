@@ -10,5 +10,6 @@
   "warmup_utterances": 3,
   "repeats": 3,
   "latency_constraint_p90_sec": 1.0,
-  "_note": "min_silence 500 ms: on the clean source set 5.0% of utterances contain an internal pause longer than this (300 ms: 15.6%, 700 ms: 2.4%, 800 ms: 0.2%); 500 ms keeps the 1.0 s budget meaningful (see README)."
+  "_note": "min_silence 500 ms: on the clean source set 5.0% of utterances contain an internal pause longer than this (300 ms: 15.6%, 700 ms: 2.4%, 800 ms: 0.2%); 500 ms keeps the 1.0 s budget meaningful (see README). preroll_ms: audio handed to the ASR starts this much before the VAD start event (VAD-gated feeding).",
+  "preroll_ms": 200
 }
