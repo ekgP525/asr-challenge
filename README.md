@@ -26,6 +26,7 @@ baseline/
   configs/B1..B4.json
 data/
   eval/                   manifest_clean_<source>.jsonl (클린 중간), manifest.jsonl (최종), clean_subset_ids_<source>.txt
+                          오디오(919 MB)는 HF Datasets: https://huggingface.co/datasets/ekgP115/campusvoice-rt-eval
   noise_list.csv          사용 잡음 클립 160개 + 개별 라이선스
   LICENSES/               FSD50K 출처 표기 (생성)
   scripts/

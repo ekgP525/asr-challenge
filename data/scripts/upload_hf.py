@@ -1,6 +1,6 @@
 """Upload the generated evaluation audio + manifest to a Hugging Face dataset repo.
 
-    HF_TOKEN=... python data/scripts/upload_hf.py --repo <user>/campusvoice-rt-eval
+    HF_TOKEN=... python data/scripts/upload_hf.py --repo ekgP115/campusvoice-rt-eval
 
 Uploads data/eval/audio/** and data/eval/manifest.jsonl, plus data/noise_list.csv
 and data/LICENSES/ so the dataset card carries the attributions.

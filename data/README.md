@@ -14,7 +14,7 @@
 ## 파일
 
 - `eval/manifest_clean_zeroth.jsonl`, `eval/manifest_clean_fleurs.jsonl` — 잡음 합성 전 클린 중간 manifest
-- `eval/manifest.jsonl` — 최종 평가셋 manifest (아래 형식). 오디오는 Hugging Face Datasets에 업로드 (링크 TBD)
+- `eval/manifest.jsonl` — 최종 평가셋 manifest (아래 형식). 오디오·manifest·잡음 목록은 Hugging Face Datasets [ekgP115/campusvoice-rt-eval](https://huggingface.co/datasets/ekgP115/campusvoice-rt-eval)에 올려져 있다
 - `eval/clean_subset_ids_zeroth.txt`, `eval/clean_subset_ids_fleurs.txt` — 선택된 원본 발화 id. 재실행 시 그대로 재사용
 - FLEURS test는 382녹음/270문장인데 숫자(86)·영문(61) 포함 문장을 빼고 문장당 1개만 남기면 174개가 상한이라 "약 250"에서 줄였다. 숫자는 고유어/한자어 읽기를 전사만으로 알 수 없고, 영문은 괄호 병기라 실제 발화와 다르기 때문이다.
 - `noise_list.csv`, `LICENSES/FSD50K.md` — 잡음 클립 목록(Freesound id, 제목, 업로더, 라이선스, 길이)과 출처 표기. 오디오 자체는 `data/noise/`에 생성되며 git에는 넣지 않는다
