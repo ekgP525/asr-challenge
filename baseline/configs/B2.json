@@ -2,6 +2,5 @@
   "system_id": "B2",
   "model": "Qwen/Qwen3-ASR-1.7B",
   "mode": "streaming",
-  "context_prompt": false,
   "description": "1.7B streaming: accuracy loss when going real-time"
 }

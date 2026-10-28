@@ -1,23 +1,20 @@
-"""Baseline runner: Qwen3-ASR (1.7B / 0.6B) in offline or streaming mode.
+"""Baseline runner: Qwen3-ASR (1.7B / 0.6B), offline or streaming.
 
     python baseline/run_qwen3_asr.py --config baseline/configs/B1.json \
-        --manifest data/eval/manifest.jsonl --audio-root data/eval \
-        --out-dir runs/B1 [--no-latency]
+        --manifest data/eval/manifest.jsonl --audio-root data/eval --out-dir runs/B1 [--no-latency]
 
 Writes
-    <out-dir>/predictions.jsonl   {"id", "text"}            (Track A input)
-    <out-dir>/latency.jsonl       UttLatency records         (Track B input)
+    <out-dir>/predictions.jsonl   {"id", "text"}                         (Track A input)
+    <out-dir>/latency.jsonl       stream_sim.UttRecord per utterance      (Track B input)
     <out-dir>/environment.json    GPU / library versions
 
-Then score with:
-    python evaluation/evaluate.py --config baseline/configs/B1.json \
-        --manifest data/eval/manifest.jsonl --predictions runs/B1/predictions.jsonl \
-        --latency runs/B1/latency.jsonl --env runs/B1/environment.json
+Then:
+    python evaluation/evaluate.py --config baseline/configs/B1.json --manifest data/eval/manifest.jsonl \
+        --predictions runs/B1/predictions.jsonl --latency runs/B1/latency.jsonl --env runs/B1/environment.json
 
-NOTE: the two adapter classes below wrap the `qwen-asr` package. Verify the
-exact call signatures against https://github.com/QwenLM/Qwen3-ASR before the
-first Colab run; everything else (pacing, VAD, timing) lives in evaluation/latency.py
-and must not be changed per system.
+The two adapter classes wrap the `qwen-asr` package; verify their call
+signatures against https://github.com/QwenLM/Qwen3-ASR before the first run.
+Pacing, VAD and timing live in evaluation/stream_sim.py and are identical for every system.
 """
 from __future__ import annotations
 
@@ -31,41 +28,39 @@ from typing import Optional
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from evaluation.latency import (  # noqa: E402
+from evaluation.stream_sim import (  # noqa: E402
     SileroEndpointer, load_config, measure_median, run_offline, run_streaming,
 )
-from evaluation.metrics import load_terms  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
 # Qwen3-ASR adapters
 # --------------------------------------------------------------------------- #
+def _load_model(model_id: str):
+    from qwen_asr import Qwen3ASRModel  # pip install -U qwen-asr[vllm]
+
+    if hasattr(Qwen3ASRModel, "LLM"):
+        return Qwen3ASRModel.LLM(model=model_id)
+    return Qwen3ASRModel.from_pretrained(model_id)
+
+
+def _text(out) -> str:
+    if isinstance(out, list):
+        out = out[0] if out else ""
+    return getattr(out, "text", out if isinstance(out, str) else "")
+
+
 class QwenOffline:
-    """Whole-utterance transcription (vLLM backend when available)."""
-
-    def __init__(self, model_id: str, context: Optional[str] = None):
-        from qwen_asr import Qwen3ASRModel  # pip install -U qwen-asr[vllm]
-
-        self.model = Qwen3ASRModel.LLM(model=model_id) if hasattr(Qwen3ASRModel, "LLM") \
-            else Qwen3ASRModel.from_pretrained(model_id)
-        self.context = context or ""
+    def __init__(self, model_id: str):
+        self.model = _load_model(model_id)
 
     def transcribe(self, audio, sample_rate: int) -> str:
-        res = self.model.transcribe(audio=(audio, sample_rate), language="Korean", context=self.context)
-        if isinstance(res, list):
-            res = res[0]
-        return getattr(res, "text", res if isinstance(res, str) else str(res))
+        return _text(self.model.transcribe(audio=(audio, sample_rate), language="Korean"))
 
 
 class QwenStreaming:
-    """Chunk-wise streaming transcription."""
-
-    def __init__(self, model_id: str, context: Optional[str] = None):
-        from qwen_asr import Qwen3ASRModel
-
-        self.model = Qwen3ASRModel.LLM(model=model_id) if hasattr(Qwen3ASRModel, "LLM") \
-            else Qwen3ASRModel.from_pretrained(model_id)
-        self.context = context or ""
+    def __init__(self, model_id: str):
+        self.model = _load_model(model_id)
         self.state = None
         self._partial = ""
 
@@ -74,19 +69,18 @@ class QwenStreaming:
         self._partial = ""
 
     def push(self, chunk, sample_rate: int) -> Optional[str]:
-        # TODO(verify): qwen-asr streaming API name/signature.
-        out = self.model.streaming_transcribe(self.state, (chunk, sample_rate), language="Korean", context=self.context)
-        text = getattr(out, "text", out if isinstance(out, str) else "")
-        if text:
-            self._partial = text
+        # TODO(verify): qwen-asr streaming API name / signature.
+        out = self.model.streaming_transcribe(self.state, (chunk, sample_rate), language="Korean")
+        t = _text(out)
+        if t:
+            self._partial = t
         return self._partial or None
 
     def finalize(self) -> str:
         if hasattr(self.model, "finish_streaming"):
-            out = self.model.finish_streaming(self.state)
-            text = getattr(out, "text", out if isinstance(out, str) else "")
-            if text:
-                self._partial = text
+            t = _text(self.model.finish_streaming(self.state))
+            if t:
+                self._partial = t
         return self._partial
 
 
@@ -95,8 +89,7 @@ def environment_info() -> dict:
     info = {"python": platform.python_version(), "platform": platform.platform()}
     for name in ("torch", "transformers", "vllm", "qwen_asr", "silero_vad"):
         try:
-            mod = __import__(name)
-            info[name] = getattr(mod, "__version__", "unknown")
+            info[name] = getattr(__import__(name), "__version__", "unknown")
         except Exception:
             info[name] = None
     try:
@@ -137,6 +130,7 @@ def main(argv=None):
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--latency-config", default=None)
     ap.add_argument("--no-latency", action="store_true", help="Track A only: transcribe without pacing")
+    ap.add_argument("--conditions", default=None, help="comma list to restrict, e.g. clean,snr0")
     ap.add_argument("--limit", type=int, default=None, help="debug: first N utterances")
     args = ap.parse_args(argv)
 
@@ -144,16 +138,13 @@ def main(argv=None):
         cfg = json.load(f)
     lcfg = load_config(args.latency_config) if args.latency_config else load_config()
     sr = lcfg["sample_rate"]
-
-    context = None
-    if cfg.get("context_prompt"):
-        terms = load_terms(os.path.join(ROOT, cfg.get("context_file", "data/terms.txt")))
-        context = "다음은 아주대학교 학사·행정·시설 관련 용어입니다: " + ", ".join(terms)
-
     streaming = cfg["mode"] == "streaming"
-    system = QwenStreaming(cfg["model"], context) if streaming else QwenOffline(cfg["model"], context)
+    system = QwenStreaming(cfg["model"]) if streaming else QwenOffline(cfg["model"])
 
     utts = list(read_jsonl(args.manifest))
+    if args.conditions:
+        keep = set(args.conditions.split(","))
+        utts = [u for u in utts if u["condition"] in keep]
     if args.limit:
         utts = utts[: args.limit]
     os.makedirs(args.out_dir, exist_ok=True)
@@ -164,35 +155,29 @@ def main(argv=None):
     lat_f = None if args.no_latency else open(os.path.join(args.out_dir, "latency.jsonl"), "w", encoding="utf-8")
     vad = None if args.no_latency else SileroEndpointer(lcfg)
 
-    # warm-up (discarded)
+    def run_once(a):
+        if streaming:
+            system.reset(); system.push(a, sr); return system.finalize()
+        return system.transcribe(a, sr)
+
     if not args.no_latency:
         for u in utts[: lcfg["warmup_utterances"]]:
-            a = load_audio(os.path.join(args.audio_root, u["audio"]), sr)
-            if streaming:
-                system.reset(); system.push(a, sr); system.finalize()
-            else:
-                system.transcribe(a, sr)
+            run_once(load_audio(os.path.join(args.audio_root, u["audio"]), sr))
 
     for i, u in enumerate(utts):
         a = load_audio(os.path.join(args.audio_root, u["audio"]), sr)
         if args.no_latency:
-            if streaming:
-                system.reset(); system.push(a, sr); text = system.finalize()
-            else:
-                text = system.transcribe(a, sr)
-            rec = None
+            text = run_once(a)
         else:
-            speech_end = u.get("speech_end", len(a) / sr)
-            speech_start = u.get("speech_start", 0.0)
             if streaming:
-                run = lambda: run_streaming(a, sr, u["id"], speech_start, speech_end, system, lcfg, vad)
+                run = lambda: run_streaming(a, sr, u, system, lcfg, vad)
             else:
-                run = lambda: run_offline(a, sr, u["id"], speech_end, system, lcfg, vad)
+                run = lambda: run_offline(a, sr, u, system, lcfg, vad)
             rec = measure_median(run, lcfg["repeats"])
             text = rec.text
             lat_f.write(json.dumps(rec.to_dict(), ensure_ascii=False) + "\n")
         pred_f.write(json.dumps({"id": u["id"], "text": text}, ensure_ascii=False) + "\n")
-        if (i + 1) % 20 == 0:
+        if (i + 1) % 50 == 0:
             print(f"{i + 1}/{len(utts)}", flush=True)
 
     pred_f.close()

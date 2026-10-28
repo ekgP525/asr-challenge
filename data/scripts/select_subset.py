@@ -1,12 +1,11 @@
-"""Build the clean reference subset from zeroth-korean (CC BY 4.0).
+"""Select clean source utterances from zeroth-korean (CC BY 4.0).
 
 Source: https://huggingface.co/datasets/kresnik/zeroth_korean  (parquet, 16 kHz,
 fields id / speaker_id / chapter_id / audio / text; numbers already in Hangul).
 Only the test shard (~60 MB) is downloaded via huggingface_hub; `datasets` is not needed.
 
 Selection (deterministic):
-  1. take the `test` split (457 utterances, disjoint from the training data
-     most Korean ASR systems have seen);
+  1. take the `test` split (457 utterances, 10 speakers);
   2. keep utterances with --min-dur <= duration <= --max-dur, whose text is
      stable under evaluation.normalizer (no digits / symbols to resolve);
   3. shuffle with --seed and pick --n utterances round-robin over speakers so
@@ -17,8 +16,8 @@ Selection (deterministic):
 Outputs
   data/eval/audio/clean/zeroth_XXXX.wav           16 kHz mono PCM16
   data/eval/manifest_clean_zeroth.jsonl           one row per utterance:
-      id, audio, duration, text, terms, domain="general", source="zeroth",
-      speaker, condition="clean", speech_start, speech_end
+      id, audio, duration, text, source="zeroth", source_id, speaker,
+      condition="clean", speech_start, speech_end
 """
 from __future__ import annotations
 
@@ -31,7 +30,6 @@ from collections import defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from common import ROOT, SR, SpeechBounds, to_mono_float32, write_jsonl, write_wav  # noqa: E402
-from evaluation.metrics import find_terms, load_terms  # noqa: E402
 from evaluation.normalizer import normalize  # noqa: E402
 
 HF_DATASET = "kresnik/zeroth_korean"
@@ -58,7 +56,7 @@ def select(rows, n: int, seed: int):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--split", default="test")
-    ap.add_argument("--n", type=int, default=200)
+    ap.add_argument("--n", type=int, default=250)
     ap.add_argument("--seed", type=int, default=2026)
     ap.add_argument("--min-dur", type=float, default=1.5)
     ap.add_argument("--max-dur", type=float, default=12.0)
@@ -75,7 +73,6 @@ def main(argv=None):
     from huggingface_hub import hf_hub_download
 
     ids_file = args.ids_file or os.path.join(args.out_dir, "clean_subset_ids.txt")
-    terms = load_terms(os.path.join(ROOT, "data", "terms.txt"))
 
     # Download only the requested split's parquet shard (the full dataset is ~3 GB).
     shard = f"data/{args.split}-00000-of-00001.parquet"
@@ -139,7 +136,7 @@ def main(argv=None):
         text = m["text"].strip()
         rows.append({
             "id": uid, "audio": rel, "duration": round(dur, 3), "text": text,
-            "terms": find_terms(text, terms), "domain": "general", "source": "zeroth",
+            "source": "zeroth",
             "source_id": m["id"], "speaker": f"zeroth_{m['speaker_id']}",
             "condition": "clean", "speech_start": round(start, 3), "speech_end": round(end, 3),
         })

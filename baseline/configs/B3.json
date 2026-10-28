@@ -2,6 +2,5 @@
   "system_id": "B3",
   "model": "Qwen/Qwen3-ASR-0.6B",
   "mode": "offline",
-  "context_prompt": false,
   "description": "0.6B offline: lightweight model"
 }

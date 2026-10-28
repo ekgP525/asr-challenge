@@ -12,7 +12,7 @@ import soundfile as sf
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
-from evaluation.latency import load_config as load_latency_config  # noqa: E402
+from evaluation.stream_sim import load_config as load_latency_config  # noqa: E402
 
 SR = load_latency_config()["sample_rate"]  # 16000
 

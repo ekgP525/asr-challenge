@@ -2,6 +2,5 @@
   "system_id": "B1",
   "model": "Qwen/Qwen3-ASR-1.7B",
   "mode": "offline",
-  "context_prompt": false,
   "description": "1.7B offline: accuracy upper bound"
 }
