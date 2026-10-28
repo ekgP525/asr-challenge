@@ -209,8 +209,14 @@ def main(argv=None):
         return system.transcribe(a, sr)
 
     if not args.no_latency:
+        # warm-up through the exact measurement path (chunked streaming / VAD-cut offline) so that
+        # lazy compilation for new input lengths is not charged to the first measured utterance
         for u in utts[: lcfg["warmup_utterances"]]:
-            run_once(load_audio(os.path.join(args.audio_root, u["audio"]), sr))
+            a = load_audio(os.path.join(args.audio_root, u["audio"]), sr)
+            if streaming:
+                run_streaming(a, sr, u, system, lcfg, vad)
+            else:
+                run_offline(a, sr, u, system, lcfg, vad)
 
     for i, u in enumerate(utts):
         a = load_audio(os.path.join(args.audio_root, u["audio"]), sr)

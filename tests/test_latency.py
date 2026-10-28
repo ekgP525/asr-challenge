@@ -28,11 +28,14 @@ def test_revision_count_prefix_rule():
     parts = [{"t": 1, "text": "오늘"}, {"t": 2, "text": "오늘 날씨"}, {"t": 3, "text": "오늘 날씨가"},
              {"t": 4, "text": "오늘 낯씨가 좋다"}, {"t": 5, "text": "오늘 낯씨가 좋다."}]
     rev, upd = revision_count(parts)
-    assert (rev, upd) == (1, 4)
+    assert (rev, upd) == (1, 3)  # the final "." only adds punctuation: not an update
     assert revision_count([]) == (0, 0)
     assert revision_count([{"t": 1, "text": "a"}]) == (0, 0)
-    # whitespace-only differences are not revisions
+    # whitespace / punctuation-only differences are neither revisions nor updates
     assert revision_count([{"t": 1, "text": "a  b"}, {"t": 2, "text": "a b c"}]) == (0, 1)
+    assert revision_count([{"t": 1, "text": "안녕하세요."}, {"t": 2, "text": "안녕하세요"}, {"t": 3, "text": "안녕하세요 여러분"}]) == (0, 1)
+    # tail re-generation that changes shown characters is a revision
+    assert revision_count([{"t": 1, "text": "염소 사육은 대략"}, {"t": 2, "text": "염소 사육은 대량 일만"}]) == (1, 1)
 
 
 def test_summarize_offline():
@@ -49,3 +52,6 @@ def test_summarize_streaming():
     s = summarize([rec(t_first_partial=1.5, partials=parts)], streaming=True)
     assert s["revision"] == 50.0
     assert s["first_partial"] == 0.5
+    assert s["premature_partial"] == 0.0
+    s2 = summarize([rec(t_first_partial=0.4, partials=parts)], streaming=True)
+    assert s2["premature_partial"] == 100.0

@@ -7,7 +7,7 @@
 | 잡음 | [FSD50K](https://zenodo.org/record/4060432) CC0·CC BY 클립만, 4범주 × 40클립 — crowd(군중·대화), wind(바람), traffic(차량), event(환호·박수) (`scripts/filter_noise.py`) | 160클립, 약 35분 | 클립별 (`noise_list.csv`, `LICENSES/FSD50K.md`) |
 | 평가셋 | 원본 424발화 × {clean, snr20, snr10, snr5, snr0} (`scripts/mix_noise.py`) | 2,120파일 | — |
 
-합성 (`scripts/mix_noise.py`): 16 kHz mono. 먼저 모든 원본 발화를 ITU-T P.56 활성 음성 레벨(`scripts/p56.py`)이 -26 dBov가 되도록 정규화한다(원본은 -65~-12 dBov로 편차가 커서 양자화·VAD 반응의 교란 요인이 됨; 피크가 0.99를 넘으면 그 한도까지만 올리고 `speech_gain`에 기록). 잡음 레벨은 실제 사용한 잡음 구간의 RMS이고, 정규화된 음성 레벨과의 차가 SNR이 되도록 잡음 이득을 정한다. 발화 앞뒤 1 s는 clean 조건에서는 무음, 잡음 조건에서는 잡음이 이어진다. 발화마다 잡음 범주·클립·시작 오프셋을 시드 고정 무작위로 정하고, 같은 발화의 4개 SNR은 같은 잡음을 레벨만 바꿔 쓴다. 짧은 클립은 50 ms 크로스페이드로 이어 붙이고, 클리핑이 나면 혼합 전체를 줄이고 `gain`에 기록한다. 야외라 잔향은 넣지 않는다.
+합성 (`scripts/mix_noise.py`): 16 kHz mono. 먼저 모든 원본 발화를 ITU-T P.56 활성 음성 레벨(`scripts/p56.py`)이 -26 dBov가 되도록 정규화한다(원본은 -65~-12 dBov로 편차가 커서 양자화·VAD 반응의 교란 요인이 됨; 피크가 0.99를 넘으면 그 한도까지만 올리고 `speech_gain`에 기록). 잡음 레벨은 실제 사용한 잡음 구간의 RMS이고, 정규화된 음성 레벨과의 차가 SNR이 되도록 잡음 이득을 정한다. 발화 앞뒤 1 s는 잡음 조건에서는 잡음이 이어지고, clean 조건에서는 파일 전체에 -60 dBov(음성보다 약 34 dB 아래)의 시드 고정 가우시안 마이크 노이즈 플로어를 깐다. 완전한 디지털 0은 실제 마이크에서 나오지 않고, LLM 기반 인식기가 앞쪽 무음 구간에서 텍스트를 환각하게 만들기 때문이다(첫 GPU 점검에서 확인). 발화마다 잡음 범주·클립·시작 오프셋을 시드 고정 무작위로 정하고, 같은 발화의 4개 SNR은 같은 잡음을 레벨만 바꿔 쓴다. 짧은 클립은 50 ms 크로스페이드로 이어 붙이고, 클리핑이 나면 혼합 전체를 줄이고 `gain`에 기록한다. 야외라 잔향은 넣지 않는다.
 
 잡음 클립은 Hugging Face 미러 `Fhrozen/FSD50k`에서 필요한 클립만 받는다(전체 32 GB 불필요). MUSAN은 범주 라벨이 없어 쓰지 않는다. AI Hub 자료는 재배포 금지라 쓰지 않는다.
 
@@ -28,5 +28,5 @@
 
 - `condition`: `clean` | `snr20` | `snr10` | `snr5` | `snr0`
 - `speech_start` / `speech_end`: 클린 원본에 Silero VAD를 적용해 구한 발화 구간(초)에 패딩 1 s를 더한 값. 지연·종료 검출 지표의 기준점
-- `noise`: clean 조건에서는 null. `noise_gain`은 잡음 클립에 곱한 이득, `gain`은 클리핑 방지를 위해 혼합 전체에 곱한 이득(1.0이면 미적용)
+- `noise`: clean 조건에서는 `{"type": "floor", "floor_dbov": -60, "snr_db": ≈34}`. `noise_gain`은 잡음 클립에 곱한 이득, `gain`은 클리핑 방지를 위해 혼합 전체에 곱한 이득(1.0이면 미적용)
 - `speech_level_dbov`: 정규화 후 P.56 활성 레벨, `source_level_dbov`: 원본 레벨, `speech_gain`: 정규화 이득, `activity`: P.56 활성도

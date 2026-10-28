@@ -1,16 +1,20 @@
 """Build the evaluation set: clean + SNR 20/10/5/0 dB outdoor-noise versions of every source utterance.
 
 For each utterance in data/eval/manifest_clean_*.jsonl:
-  * pad 1 s (--pad) before and after the utterance; the clean condition gets digital
-    silence there, noisy conditions get noise over the whole padded length, so the
-    endpointer has to find the end of speech inside noise;
+  * pad 1 s (--pad) before and after the utterance; noisy conditions get noise over
+    the whole padded length, so the endpointer has to find the end of speech inside
+    noise. The clean condition gets a seeded Gaussian microphone noise floor at
+    --clean-floor dBov (default -60, i.e. ~34 dB below the speech level) over the
+    whole file instead of digital zeros: exact zeros never occur with a real
+    microphone and make LLM-based recognizers hallucinate text on the leading pad;
   * every source utterance is first scaled so its ITU-T P.56 active speech level
     equals --target-level (default -26 dBov; recordings differ by 50 dB otherwise),
     limited so the peak stays below 0.99; the applied `speech_gain` is recorded;
   * the noise level is the RMS of the noise segment actually used; noise gain is
     set so that target_level - noise_level = SNR;
-  * noise category cycles over crowd/event/traffic/wind in utterance order (balanced);
-    the clip and start offset are drawn from a seeded RNG per utterance
+  * noise category = utterance number mod 4 over crowd/event/traffic/wind (balanced
+    within each source, independent of processing order); the clip and start
+    offset are drawn from a seeded RNG per utterance
     (same noise clip/offset across the four SNRs of one utterance, so only the
     level changes). Clips shorter than needed are tiled with a 50 ms crossfade;
   * if the mixture would clip, the whole mixture is scaled down (gain recorded);
@@ -73,6 +77,7 @@ def main(argv=None):
     ap.add_argument("--noise-list", default=os.path.join(ROOT, "data", "noise_list.csv"))
     ap.add_argument("--pad", type=float, default=1.0, help="seconds of noise/silence before and after")
     ap.add_argument("--target-level", type=float, default=-26.0, help="P.56 active speech level after normalization (dBov)")
+    ap.add_argument("--clean-floor", type=float, default=-60.0, help="clean-condition noise floor (dBov RMS)")
     ap.add_argument("--seed", type=int, default=2026)
     ap.add_argument("--snrs", default=",".join(map(str, SNRS)))
     ap.add_argument("--limit", type=int, default=None)
@@ -119,11 +124,16 @@ def main(argv=None):
                      "speech_level_dbov": round(s_level, 2), "source_level_dbov": round(raw_level, 2),
                      "speech_gain": round(float(s_gain), 5), "activity": round(act, 3)})
 
+        floor_seed = random.Random(f"{args.seed}:{u['id']}:floor").getrandbits(32)  # deterministic (no PYTHONHASHSEED)
+        floor = np.random.default_rng(floor_seed).standard_normal(n)
+        floor = (floor * 10 ** (args.clean_floor / 20)).astype(np.float32)
         rel = f"audio/clean/{u['id']}.wav"
-        write_wav(os.path.join(args.eval_dir, rel), padded)
-        out_rows.append({"id": f"{u['id']}_clean", "audio": rel, "condition": "clean", "noise": None, "gain": 1.0, **base})
+        write_wav(os.path.join(args.eval_dir, rel), padded + floor)
+        out_rows.append({"id": f"{u['id']}_clean", "audio": rel, "condition": "clean",
+                         "noise": {"type": "floor", "file": None, "snr_db": round(s_level - args.clean_floor, 1),
+                                   "floor_dbov": args.clean_floor}, "gain": 1.0, **base})
 
-        cat = cats[k % len(cats)]  # balanced over categories; clip/offset still per-utterance random
+        cat = cats[int(u["id"].rsplit("_", 1)[1]) % len(cats)]  # by utterance number: balanced per source, order-independent
         clip = rng.choice(bank[cat])
         noise = noise_audio(clip["file"])
         offset = rng.randrange(len(noise))
