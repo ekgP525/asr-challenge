@@ -2,7 +2,7 @@
 
     python evaluation/fill_page.py --page index.html --results results \
         [--jitter results/jitter_B2.json] [--env runs/B1/environment.json] [--n-examples 8] \
-        [--also submission/Team_DahyeLee_202422051.html]
+        [--also submission/Team_이다혜_202422051.html]
 
 The page keeps its data in three JS literals; this script rewrites them in place:
   const RESULTS = [...];   from results/B*.json (cond values copied verbatim)
