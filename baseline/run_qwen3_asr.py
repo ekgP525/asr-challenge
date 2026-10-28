@@ -122,11 +122,13 @@ class Mock:
 
 # --------------------------------------------------------------------------- #
 def environment_info() -> dict:
+    from importlib.metadata import PackageNotFoundError, version
+
     info = {"python": platform.python_version(), "platform": platform.platform()}
-    for name in ("torch", "transformers", "vllm", "qwen_asr", "silero_vad"):
+    for name in ("torch", "transformers", "vllm", "qwen-asr", "silero-vad"):
         try:
-            info[name] = getattr(__import__(name), "__version__", "unknown")
-        except Exception:
+            info[name] = version(name)
+        except PackageNotFoundError:
             info[name] = None
     try:
         import torch
