@@ -8,7 +8,7 @@ import os
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WAVS = sorted(glob.glob(os.path.join(ROOT, "data", "eval", "audio", "clean", "*.wav")))
+WAVS = sorted(glob.glob(os.path.join(ROOT, "data", "eval", "audio", "src", "*.wav")))
 
 
 class Echo:

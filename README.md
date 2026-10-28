@@ -26,12 +26,14 @@ baseline/
   configs/B1..B4.json
 data/
   eval/                   manifest_clean_<source>.jsonl (클린 중간), manifest.jsonl (최종), clean_subset_ids_<source>.txt
-  noise_list.csv          사용 잡음 파일 + 개별 라이선스 (TBD)
-  LICENSES/               Zeroth, FLEURS, MUSAN, FSD50K 출처 표기 (TBD)
+  noise_list.csv          사용 잡음 클립 160개 + 개별 라이선스
+  LICENSES/               FSD50K 출처 표기 (생성)
   scripts/
     select_subset.py      Zeroth·FLEURS test에서 발화 추출 + VAD 정답 구간
-    filter_noise.py       FSD50K CC0·CC BY 필터, 범주 선택 (TBD)
-    mix_noise.py          P.56 기준 SNR 4조건 합성, 앞뒤 1 s 잡음 패딩, 시드 고정 (TBD)
+    filter_noise.py       FSD50K CC0·CC BY 필터, 4범주 선택, 클립만 다운로드
+    p56.py                ITU-T P.56 활성 음성 레벨
+    mix_noise.py          SNR 4조건 합성, 앞뒤 1 s 잡음 패딩, 시드 고정
+    upload_hf.py          평가셋 Hugging Face Datasets 업로드
     common.py
 evaluation/
   normalizer.py           텍스트 정규화 (고정 규칙, 버전 관리)
@@ -42,7 +44,8 @@ evaluation/
   evaluate.py             예측 + 지연 기록 → results/<system>.json
   make_leaderboard.py     results/ → 순위표(md/json) + Clean→0 dB 경로 그래프
 results/
-notebooks/reproduce_colab.ipynb
+notebooks/reproduce_colab.ipynb   베이스라인 재현
+notebooks/build_dataset_colab.ipynb  평가셋 생성(디스크 부족 시 Colab에서)
 tests/
 ```
 
@@ -100,7 +103,7 @@ Colab, NVIDIA L4 고정. GPU·CUDA·torch/transformers/vLLM/qwen-asr 버전은 �
 ## 데이터·라이선스
 
 - 원본 음성: [zeroth-korean](https://huggingface.co/datasets/kresnik/zeroth_korean) test 250발화, [FLEURS](https://huggingface.co/datasets/google/fleurs) ko_kr test 174발화 (둘 다 CC BY 4.0)
-- 잡음: MUSAN, FSD50K 중 CC0·CC BY 클립만 (파일별 라이선스는 `data/noise_list.csv`)
+- 잡음: FSD50K 중 CC0·CC BY 클립만 (클립별 라이선스는 `data/noise_list.csv`, 출처 표기는 `data/LICENSES/FSD50K.md`)
 - AI Hub 자료는 재배포 금지라 사용하지 않음
 - Qwen3-ASR 기술 보고서가 한국어를 FLEURS로 평가했으므로 Clean 점수는 기준점으로만 보고, 잡음 조건에서의 하락폭을 중심으로 해석한다.
 - 베이스라인: [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) ([1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B), [0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B))

@@ -23,7 +23,7 @@ Selection (deterministic):
      re-used verbatim on later runs (--reselect to ignore).
 
 Outputs
-  data/eval/audio/clean/<source>_XXXX.wav         16 kHz mono PCM16
+  data/eval/audio/src/<source>_XXXX.wav           16 kHz mono PCM16 (unpadded source)
   data/eval/manifest_clean_<source>.jsonl         id, audio, duration, text, source,
       source_id, speaker, condition="clean", speech_start, speech_end (Silero VAD)
 """
@@ -184,7 +184,7 @@ def main(argv=None):
         audio = decode(c)
         dur = len(audio) / SR
         uid = f"{src}_{k:04d}"
-        rel = f"audio/clean/{uid}.wav"
+        rel = f"audio/src/{uid}.wav"
         write_wav(os.path.join(args.out_dir, rel), audio)
         bounds = vad(audio) if vad else None
         start, end = bounds if bounds else (0.0, dur)
