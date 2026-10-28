@@ -2,5 +2,8 @@
   "system_id": "B1",
   "model": "Qwen/Qwen3-ASR-1.7B",
   "mode": "offline",
-  "description": "1.7B offline: accuracy upper bound"
+  "description": "1.7B offline: accuracy upper bound",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256
 }

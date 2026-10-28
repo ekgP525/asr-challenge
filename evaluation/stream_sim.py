@@ -1,8 +1,17 @@
-"""Real-time streaming simulator + shared Silero VAD endpointer (Track B front end).
+"""Streaming simulator (discrete-event real time) + shared Silero VAD endpointer.
 
 Protocol (identical for every system):
 
-* Audio is fed in fixed-size chunks (default 0.5 s) at real-time pace.
+* Audio is fed to the ASR in fixed-size chunks (default 0.5 s). Chunk i becomes
+  available at stream time (i+1)*chunk; a virtual clock advances to that arrival
+  time and then by the *measured wall-clock* cost of every VAD / model call.
+* The endpointer runs on 32 ms frames, so when it fires inside a chunk the
+  detection is timed at that frame's arrival, not at the chunk boundary, and only
+  the audio up to that frame is delivered to the ASR (offline: as the segment;
+  streaming: as a last partial chunk before finalize()). A system that keeps
+  up sees exactly real-time behaviour; one that falls behind accumulates queueing
+  delay, as it would with a live microphone. No sleeping, so a run costs only the
+  compute time, and results are deterministic given the measured costs.
 * Silero VAD with the parameters in `latency_config.json` runs on every chunk
   for every system, so end-of-speech detection is charged equally.
 * Ground-truth `speech_start` / `speech_end` come from the manifest (VAD on the
@@ -19,8 +28,8 @@ Protocol (identical for every system):
 * Warm-up utterances are discarded; each utterance is measured `repeats` times
   and the run with the median final latency is kept.
 
-All times in an `UttRecord` are in *stream seconds* (0 = first sample fed),
-so they are directly comparable with manifest timestamps.
+All times in an `UttRecord` are stream seconds on the virtual clock (0 = first
+sample fed), directly comparable with manifest timestamps.
 
 Heavy dependencies (numpy, torch, silero-vad) are imported lazily.
 """
@@ -126,10 +135,22 @@ def iter_chunks(audio, sr: int, chunk_ms: int):
         yield audio[i: i + n]
 
 
-def _pace(t0: float, stream_pos_sec: float):
-    delay = t0 + stream_pos_sec - time.perf_counter()
-    if delay > 0:
-        time.sleep(delay)
+class _Clock:
+    """Virtual stream clock: t = max(t, arrival) then t += measured compute."""
+
+    def __init__(self):
+        self.t = 0.0
+        self.busy = 0.0
+
+    def arrive(self, stream_pos: float):
+        if stream_pos > self.t:
+            self.t = stream_pos
+
+    def spend(self, t_wall0: float) -> float:
+        dt = time.perf_counter() - t_wall0
+        self.t += dt
+        self.busy += dt
+        return dt
 
 
 def run_offline(audio, sr: int, utt: dict, system: OfflineSystem, cfg: dict,
@@ -137,27 +158,34 @@ def run_offline(audio, sr: int, utt: dict, system: OfflineSystem, cfg: dict,
     import numpy as np
 
     vad.reset()
+    clk = _Clock()
     duration = len(audio) / sr
-    t0 = time.perf_counter()
     fed = 0
     vad_end = None
+    end_sample = len(audio)
     for chunk in iter_chunks(audio, sr, cfg["chunk_ms"]):
+        start = fed
         fed += len(chunk)
-        _pace(t0, fed / sr)
+        w0 = time.perf_counter()
         off = vad.feed(chunk)
         if off is not None:
-            vad_end = (fed - len(chunk) + off) / sr
+            end_sample = start + off
+            vad_end = end_sample / sr
+            clk.arrive(vad_end)        # the frame that triggered the endpoint has just arrived
+            clk.spend(w0)
             break
-    segment = np.asarray(audio[:fed])
-    t_inf0 = time.perf_counter()
+        clk.arrive(fed / sr)
+        clk.spend(w0)
+    segment = np.asarray(audio[:end_sample])
+    w0 = time.perf_counter()
     text = system.transcribe(segment, sr)
-    t_final = time.perf_counter()
+    infer = clk.spend(w0)
     return UttRecord(
         id=utt["id"], audio_duration=duration,
         speech_start=utt["speech_start"], speech_end=utt["speech_end"],
-        vad_end=vad_end, t_final=t_final - t0, t_first_partial=None,
-        processing_time=t_final - t_inf0,
-        partials=[{"t": t_final - t0, "text": text}], text=text,
+        vad_end=vad_end, t_final=clk.t, t_first_partial=None,
+        processing_time=infer,
+        partials=[{"t": clk.t, "text": text}], text=text,
     )
 
 
@@ -165,40 +193,47 @@ def run_streaming(audio, sr: int, utt: dict, system: StreamingSystem, cfg: dict,
                   vad: SileroEndpointer) -> UttRecord:
     vad.reset()
     system.reset()
+    clk = _Clock()
     duration = len(audio) / sr
-    t0 = time.perf_counter()
     fed = 0
     vad_end = None
-    busy = 0.0
     partials: List[dict] = []
     last = ""
+
+    def emit(partial):
+        nonlocal last
+        if partial is not None and partial != last:
+            partials.append({"t": clk.t, "text": partial})
+            last = partial
+
     for chunk in iter_chunks(audio, sr, cfg["chunk_ms"]):
+        start = fed
         fed += len(chunk)
-        _pace(t0, fed / sr)
+        w0 = time.perf_counter()
         off = vad.feed(chunk)
         if off is not None:
-            vad_end = (fed - len(chunk) + off) / sr
-        tb = time.perf_counter()
-        partial = system.push(chunk, sr)
-        now = time.perf_counter()
-        busy += now - tb
-        if partial is not None and partial != last:
-            partials.append({"t": now - t0, "text": partial})
-            last = partial
-        if vad_end is not None:
+            vad_end = (start + off) / sr
+            clk.arrive(vad_end)
+            clk.spend(w0)
+            w0 = time.perf_counter()
+            emit(system.push(chunk[:off], sr))   # only the audio up to the detected end
+            clk.spend(w0)
             break
-    tb = time.perf_counter()
+        clk.arrive(fed / sr)
+        clk.spend(w0)
+        w0 = time.perf_counter()
+        emit(system.push(chunk, sr))
+        clk.spend(w0)
+    w0 = time.perf_counter()
     text = system.finalize()
-    t_final = time.perf_counter()
-    busy += t_final - tb
-    if text != last:
-        partials.append({"t": t_final - t0, "text": text})
+    clk.spend(w0)
+    emit(text)
     first = next((p["t"] for p in partials if p["text"].strip()), None)
     return UttRecord(
         id=utt["id"], audio_duration=duration,
         speech_start=utt["speech_start"], speech_end=utt["speech_end"],
-        vad_end=vad_end, t_final=t_final - t0, t_first_partial=first,
-        processing_time=busy, partials=partials, text=text,
+        vad_end=vad_end, t_final=clk.t, t_first_partial=first,
+        processing_time=clk.busy, partials=partials, text=text,
     )
 
 

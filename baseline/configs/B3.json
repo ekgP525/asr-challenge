@@ -2,5 +2,8 @@
   "system_id": "B3",
   "model": "Qwen/Qwen3-ASR-0.6B",
   "mode": "offline",
-  "description": "0.6B offline: lightweight model"
+  "description": "0.6B offline: lightweight model",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256
 }

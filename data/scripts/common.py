@@ -40,20 +40,22 @@ def read_wav(path: str, target_sr: int = SR) -> np.ndarray:
 class SpeechBounds:
     """Silero VAD based speech_start / speech_end (seconds) for a whole utterance.
 
-    Uses the same VAD parameters as the latency protocol (evaluation/latency_config.json)
-    so the reference speech_end is consistent with what the endpointer sees.
+    Parameters are fixed here (threshold 0.5, min silence 300 ms, pad 30 ms) and
+    independent of the endpointer config, so the reference bounds in the published
+    manifests do not change when the latency protocol is tuned.
     """
+
+    THRESHOLD = 0.5
+    MIN_SILENCE_MS = 300
+    SPEECH_PAD_MS = 30
 
     def __init__(self):
         from silero_vad import get_speech_timestamps, load_silero_vad
 
-        cfg = load_latency_config()["vad"]
         self.model = load_silero_vad()
         self._get = get_speech_timestamps
-        self.kw = dict(threshold=cfg["threshold"],
-                       min_silence_duration_ms=cfg["min_silence_duration_ms"],
-                       speech_pad_ms=cfg["speech_pad_ms"],
-                       sampling_rate=SR, return_seconds=True)
+        self.kw = dict(threshold=self.THRESHOLD, min_silence_duration_ms=self.MIN_SILENCE_MS,
+                       speech_pad_ms=self.SPEECH_PAD_MS, sampling_rate=SR, return_seconds=True)
 
     def __call__(self, audio: np.ndarray) -> Optional[tuple]:
         import torch

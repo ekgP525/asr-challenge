@@ -47,9 +47,6 @@ def test_simulator_with_silero_vad():
     ts = get_speech_timestamps(__import__("torch").from_numpy(audio), load_silero_vad(),
                                sampling_rate=sr, return_seconds=True)
     utt = {"id": "t", "speech_start": ts[0]["start"], "speech_end": ts[-1]["end"]}
-    # speed up: feed faster than real time by shrinking the pacing (monkeypatch)
-    import evaluation.stream_sim as ss
-    ss._pace = lambda t0, pos: None
     vad = SileroEndpointer(cfg)
 
     r = run_offline(audio, sr, utt, Echo(), cfg, vad)
@@ -62,3 +59,31 @@ def test_simulator_with_silero_vad():
     assert r2.t_first_partial is not None
     assert r2.partials[-1]["text"].endswith("끝")
     assert len(r2.partials) >= 3
+    # virtual clock: final time is at least the arrival of the chunk where VAD fired
+    assert r2.t_final >= r2.vad_end
+
+
+class Slow(Echo):
+    """push() costs 0.3 s per 0.5 s chunk -> keeps up; 0.8 s -> falls behind."""
+    def __init__(self, cost):
+        super().__init__(); self.cost = cost
+    def push(self, chunk, sr):
+        import time; time.sleep(self.cost); return super().push(chunk, sr)
+
+
+@pytest.mark.skipif(not WAVS, reason="no clean wav extracted yet")
+def test_virtual_clock_models_queueing():
+    np = pytest.importorskip("numpy")
+    pytest.importorskip("silero_vad")
+    sf = pytest.importorskip("soundfile")
+    from evaluation.stream_sim import SileroEndpointer, load_config, run_streaming
+    cfg = dict(load_config()); sr = cfg["sample_rate"]
+    audio, _ = sf.read(WAVS[0], dtype="float32")
+    audio = np.concatenate([np.zeros(sr, np.float32), audio[: sr * 3], np.zeros(sr, np.float32)])
+    utt = {"id": "t", "speech_start": 1.0, "speech_end": 4.0}
+    vad = SileroEndpointer(cfg)
+    fast = run_streaming(audio, sr, utt, Slow(0.05), cfg, vad)
+    slow = run_streaming(audio, sr, utt, Slow(0.8), cfg, vad)
+    # 10 chunks of 0.5 s: at 0.8 s each the system finishes ~8 s after the start, far beyond 5 s audio
+    assert slow.t_final - fast.t_final > 2.0
+    assert slow.processing_time > fast.processing_time

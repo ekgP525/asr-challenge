@@ -3,11 +3,12 @@
   "chunk_ms": 500,
   "vad": {
     "threshold": 0.5,
-    "min_silence_duration_ms": 300,
+    "min_silence_duration_ms": 500,
     "speech_pad_ms": 30,
     "window_size_samples": 512
   },
   "warmup_utterances": 3,
   "repeats": 3,
-  "latency_constraint_p90_sec": 1.0
+  "latency_constraint_p90_sec": 1.0,
+  "_note": "min_silence 500 ms: on the clean source set 5.0% of utterances contain an internal pause longer than this (300 ms: 15.6%, 700 ms: 2.4%, 800 ms: 0.2%); 500 ms keeps the 1.0 s budget meaningful (see README)."
 }

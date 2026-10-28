@@ -2,5 +2,13 @@
   "system_id": "B4",
   "model": "Qwen/Qwen3-ASR-0.6B",
   "mode": "streaming",
-  "description": "0.6B streaming: latency lower bound"
+  "description": "0.6B streaming: latency lower bound",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256,
+  "streaming": {
+    "chunk_sec": 1.0,
+    "unfixed_chunk_num": 2,
+    "unfixed_token_num": 5
+  }
 }
