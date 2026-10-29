@@ -184,10 +184,6 @@ def main(argv=None):
         lcfg["repeats"] = args.repeats
     sr = lcfg["sample_rate"]
     streaming = cfg["mode"] == "streaming"
-    if args.mock:
-        system = Mock(cfg)
-    else:
-        system = QwenStreaming(cfg) if streaming else QwenOffline(cfg)
 
     utts = list(read_jsonl(args.manifest))
     if args.conditions:
@@ -218,6 +214,13 @@ def main(argv=None):
                         f.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"resume: {len(done)} utterances already done", flush=True)
     todo = [u for u in utts if u["id"] not in done]
+    if not todo:
+        print("nothing to do", flush=True)
+        return
+    if args.mock:
+        system = Mock(cfg)
+    else:
+        system = QwenStreaming(cfg) if streaming else QwenOffline(cfg)   # load the model only when needed
     pred_f = open(pred_path, "a" if args.resume else "w", encoding="utf-8")
     lat_f = None if args.no_latency else open(lat_path, "a" if args.resume else "w", encoding="utf-8")
     vad = None if args.no_latency else SileroEndpointer(lcfg)
