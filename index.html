@@ -500,14 +500,14 @@ const RESULTS = [
 ];
 
 const EXAMPLES = [
-  {"condition": "Clean", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 noise floor. 발화 CER 0.0%"},
-  {"condition": "SNR 10 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 event. 발화 CER 0.0%"},
-  {"condition": "SNR 0 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "이게요 생일 복을 더 잘 찾지 못해 안 하고 제품명이 인명 건안을 갖고 경찰청장 인명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 event. 발화 CER 58.5%"},
-  {"condition": "Clean", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 noise floor. 발화 CER 0.0%"},
-  {"condition": "SNR 10 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 traffic. 발화 CER 0.0%"},
-  {"condition": "SNR 0 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 관심을 아르노 퓨토스 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 traffic. 발화 CER 52.6%"},
+  {"condition": "Clean", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음: 노이즈 플로어(Clean). 발화 CER 0.0%"},
+  {"condition": "SNR 10 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음: 야외 행사. 발화 CER 0.0%"},
+  {"condition": "SNR 0 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "이게요 생일 복을 더 잘 찾지 못해 안 하고 제품명이 인명 건안을 갖고 경찰청장 인명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음: 야외 행사. 발화 CER 58.5%"},
+  {"condition": "Clean", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음: 노이즈 플로어(Clean). 발화 CER 0.0%"},
+  {"condition": "SNR 10 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음: 차량. 발화 CER 0.0%"},
+  {"condition": "SNR 0 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 관심을 아르노 퓨토스 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음: 차량. 발화 CER 52.6%"},
   {"condition": "Clean", "ref": "이 동물은 물에 들어오는 모든 것 역시 공격했으며, 티라노사우르스처럼 거대한 공룡도 당해내지 못할 정도였습니다.", "hyp": "이 동물은 물에 들어오는 모든 것 역시 공격했으며.", "system": "B2", "note": "조기 절단: 문장 내 쉼에서 VAD가 정답 종료보다 5.10초 먼저 끊어 뒷부분이 빠짐"},
-  {"condition": "SNR 0 dB", "ref": "크러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 두껍습니다.", "hyp": "[첫 부분결과] 네. → [최종] 플러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 높습니다.", "system": "B2", "note": "발화 시작 2.49초 전에 잡음(crowd)만 듣고 첫 부분결과를 냄"}
+  {"condition": "SNR 0 dB", "ref": "크러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 두껍습니다.", "hyp": "[첫 부분결과] 네. → [최종] 플러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 높습니다.", "system": "B2", "note": "발화 시작 2.49초 전에 잡음(군중·대화)만 듣고 첫 부분결과를 냄"}
 ];
 /* ===================================================================== */
 
@@ -573,7 +573,7 @@ $('#lb-rows').innerHTML =
   const yStep = yMax <= 20 ? 5 : 10;
   for (let v=0; v<=yMax; v+=yStep) s += `<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#EEF1F5"/><text x="${m.l-8}" y="${y(v)+4}" font-size="12" fill="#566173" text-anchor="end">${v}</text>`;
   s += `<line x1="${x(CONFIG.latencyLimit)}" x2="${x(CONFIG.latencyLimit)}" y1="${m.t}" y2="${H-m.b}" stroke="#c89600" stroke-width="2" stroke-dasharray="5 4"/>`;
-  s += `<text x="${x(CONFIG.latencyLimit)+6}" y="${m.t+12}" font-size="12" font-weight="600" fill="#17212F">1.0초 제약</text>`;
+  s += `<text x="${x(CONFIG.latencyLimit)+6}" y="${H-m.b-8}" font-size="12" font-weight="600" fill="#17212F">1.0초 제약</text>`;
   s += `<text x="${(m.l+W-m.r)/2}" y="${H-8}" font-size="12" fill="#566173" text-anchor="middle">p90 최종 지연 (초)</text>`;
   s += `<text transform="translate(14 ${(m.t+H-m.b)/2}) rotate(-90)" font-size="12" fill="#566173" text-anchor="middle">CER (%), 낮을수록 좋음</text>`;
   series.forEach(({r, pts}) => {

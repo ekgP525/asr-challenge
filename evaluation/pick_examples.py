@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from evaluation.metrics import utterance_cer  # noqa: E402
 
 LABEL = {"clean": "Clean", "snr20": "SNR 20 dB", "snr10": "SNR 10 dB", "snr5": "SNR 5 dB", "snr0": "SNR 0 dB"}
+NOISE_KO = {"crowd": "군중·대화", "wind": "바람", "traffic": "차량", "event": "야외 행사", "floor": "노이즈 플로어(Clean)"}
 
 
 def read_jsonl(p):
@@ -59,9 +60,9 @@ def main():
     for _, b, cers in cands[: a.n_degrade]:
         for c, cer in zip(("clean", "snr10", "snr0"), cers):
             i = f"{b}_{c}"
-            noise = man[i]["noise"]["type"] if c != "clean" else "noise floor"
+            noise = NOISE_KO.get(man[i]["noise"]["type"], man[i]["noise"]["type"])
             out.append({"condition": LABEL[c], "ref": man[i]["text"], "hyp": preds[i], "system": a.system,
-                        "note": f"같은 발화, 잡음 {noise}. 발화 CER {cer:.1f}%"})
+                        "note": f"같은 발화, 잡음: {noise}. 발화 CER {cer:.1f}%"})
     # 2. early cut (clean, so the cut is the pause itself, not noise)
     cuts = []
     for b in base_ids:
@@ -86,7 +87,7 @@ def main():
     prem.sort(reverse=True)
     for lead, i, first_text in prem[:1]:
         out.append({"condition": LABEL["snr0"], "ref": man[i]["text"], "hyp": f"[첫 부분결과] {first_text} → [최종] {preds[i]}",
-                    "system": a.system, "note": f"발화 시작 {lead:.2f}초 전에 잡음({man[i]['noise']['type']})만 듣고 첫 부분결과를 냄"})
+                    "system": a.system, "note": f"발화 시작 {lead:.2f}초 전에 잡음({NOISE_KO.get(man[i]['noise']['type'], man[i]['noise']['type'])})만 듣고 첫 부분결과를 냄"})
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
