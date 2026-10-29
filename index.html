@@ -359,7 +359,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
 <section id="leaderboard">
   <div class="col">
     <h2>리더보드</h2>
-    <p>모든 시스템은 같은 평가셋, 같은 VAD 설정, NVIDIA L4에서 측정했습니다.</p>
+    <p>모든 시스템은 같은 평가셋, 같은 VAD 설정, NVIDIA L4에서 측정했습니다. 잡음 4개 조건 각각에서 p90 최종 지연이 1.0초 이하인 시스템만 순위를 받고, 넘는 시스템은 '지연 초과'로 표시됩니다.</p>
   </div>
   <div class="tablewrap">
     <table>
@@ -381,6 +381,23 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
     <svg id="scatter" viewBox="0 0 720 380" role="img" aria-label="시스템별로 잡음 조건에 따라 p90 최종 지연과 CER이 이동하는 경로"></svg>
   </div>
   <p class="small muted">각 선은 한 시스템이 Clean에서 0 dB로 갈 때의 이동 경로입니다. 작은 점이 Clean, 큰 점이 0 dB이며, 점선 오른쪽은 1.0초 제약을 넘긴 영역입니다.</p>
+  <div class="col">
+    <h3>결과 해석</h3>
+    <ul class="plain">
+      <li>네 시스템 모두 잡음 조건 중 하나 이상에서 p90 최종 지연이 1.0초를 넘어 메인 순위는 비어 있습니다. 가장 가까운 것은 B4(0 dB에서만 1.08초)이고, B2는 5 dB부터, B3는 10 dB부터, B1은 Clean에서도 넘습니다. 정확도 순서(B1 &lt; B2 &lt; B3 &lt; B4)와 지연 순서는 정반대입니다.</li>
+      <li>지연이 늘어나는 주 원인은 잡음 속 종료 검출입니다. 종료 검출 지연 p90이 Clean 0.56초에서 0 dB 0.99초로 늘고, 그 위에 오프라인은 종료 후 전체 추론(B1 p90 0.80초)을, 스트리밍은 마지막 청크 처리(0.15~0.29초)만 더합니다.</li>
+      <li>CER은 두 경로로 오릅니다. 엔드포인터가 문장 내 쉼에서 발화를 일찍 끊는 조기 절단이 Clean 43개에서 0 dB 64개로 늘고(절단 발화의 CER 66~75%), 절단되지 않은 발화의 인식 오류도 2.5~4.3%에서 12~19%로 4~5배 늘어납니다. 엔드포인터는 모든 시스템이 공유하므로 순위에는 영향이 없습니다.</li>
+      <li>스트리밍은 잡음이 커질수록 이미 보여준 텍스트를 고치는 일이 늘고(수정률 B2 19% → 38%), 발화 시작 전에 잡음만 듣고 텍스트를 내는 비율도 3% → 7%로 늘어납니다.</li>
+    </ul>
+  </div>
+  <div class="tablewrap">
+    <table class="small">
+      <thead><tr><th>시스템</th><th class="r">CER 전체<br>Clean → 0 dB</th><th class="r">CER 절단 제외<br>Clean → 0 dB</th><th class="r">종료 검출 지연 p90 (s)<br>Clean → 0 dB</th><th class="r">종료 후 처리 p90 (s)</th><th class="r">p90 최종 지연 (s)<br>Clean → 0 dB</th></tr></thead>
+      <tbody><tr><td><b>B1</b> 오프라인</td><td class='r num'>10.3 → 22.9</td><td class='r num'>2.5 → 12.2</td><td class='r num'>0.56 → 0.99</td><td class='r num'>0.80</td><td class='r num'>1.33 → 1.59</td></tr><tr><td><b>B2</b> 스트리밍</td><td class='r num'>10.8 → 24.3</td><td class='r num'>3.0 → 14.0</td><td class='r num'>0.56 → 0.99</td><td class='r num'>0.29</td><td class='r num'>0.81 → 1.14</td></tr><tr><td><b>B3</b> 오프라인</td><td class='r num'>11.5 → 26.9</td><td class='r num'>3.8 → 16.8</td><td class='r num'>0.56 → 0.99</td><td class='r num'>0.34</td><td class='r num'>0.87 → 1.24</td></tr><tr><td><b>B4</b> 스트리밍</td><td class='r num'>12.0 → 28.4</td><td class='r num'>4.3 → 18.5</td><td class='r num'>0.56 → 0.99</td><td class='r num'>0.15</td><td class='r num'>0.67 → 1.08</td></tr></tbody>
+    </table>
+  </div>
+  <p class="small muted">절단 제외 CER과 지연 분해는 <code>results/analysis.json</code>(<code>evaluation/analyze.py</code>)에서 계산했습니다. 측정 흔들림: B2 40발화 × 5조건을 3회 반복한 중앙값 대비 최종 지연 차이 중앙값 29 ms.</p>
+
 </section>
 
 <!-- 사례 -->
@@ -447,15 +464,15 @@ const CONFIG = {
   },
   latencyLimit: 1.0,
   env: [
-    ["GPU", "NVIDIA L4 (Colab)"],
-    ["Python", null],
-    ["CUDA", null],
-    ["torch", null],
-    ["transformers", null],
-    ["vLLM", null],
-    ["qwen-asr", null],
+    ["GPU", "NVIDIA L4"],
+    ["Python", "3.13.16"],
+    ["CUDA", "12.8"],
+    ["torch", "2.9.1"],
+    ["transformers", "4.57.6"],
+    ["vLLM", "0.14.0"],
+    ["qwen-asr", "0.0.6"],
     ["VAD", "Silero VAD, threshold 0.5, min silence 500 ms, speech pad 30 ms, 프리롤 200 ms"],
-    ["측정", "가상 시계 시뮬레이션, 발화당 1회 측정 (흔들림 검증: B2 40발화 × 3회)"]
+    ["측정", "가상 시계 시뮬레이션, 발화당 1회 측정. 흔들림 검증: B2 200개 평가 파일(40발화 × 5조건) 3회 반복 중앙값 대비 최종 지연 차이 중앙값 29 ms, p90 0.866 s vs 0.831 s"]
   ]
 };
 
@@ -476,14 +493,21 @@ const BASELINES = [
 
 const C = () => ({ cer:null, p50:null, p90:null, start_err:null, endpoint:null, missed:null, early_cut:null, revision:null, first_partial:null, premature_partial:null });
 const RESULTS = [
-  { id:"B1", name:"Qwen3-ASR-1.7B 오프라인", rtfx:null, cond:{ clean:C(), snr20:C(), snr10:C(), snr5:C(), snr0:C() } },
-  { id:"B2", name:"Qwen3-ASR-1.7B 스트리밍", rtfx:null, cond:{ clean:C(), snr20:C(), snr10:C(), snr5:C(), snr0:C() } },
-  { id:"B3", name:"Qwen3-ASR-0.6B 오프라인", rtfx:null, cond:{ clean:C(), snr20:C(), snr10:C(), snr5:C(), snr0:C() } },
-  { id:"B4", name:"Qwen3-ASR-0.6B 스트리밍", rtfx:null, cond:{ clean:C(), snr20:C(), snr10:C(), snr5:C(), snr0:C() } }
+  { id:"B1", name:"Qwen3-ASR-1.7B 오프라인", rtfx:22.35, cond:{"clean": {"cer": 10.31, "p50": 1.0579, "p90": 1.3273, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 9.88, "p50": 1.0797, "p90": 1.3578, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 12.53, "p50": 1.1165, "p90": 1.4623, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 16.01, "p50": 1.1268, "p90": 1.5451, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 22.86, "p50": 1.116, "p90": 1.5933, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
+  { id:"B2", name:"Qwen3-ASR-1.7B 스트리밍", rtfx:7.66, cond:{"clean": {"cer": 10.77, "p50": 0.6613, "p90": 0.8052, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 19.22, "first_partial": 1.0093, "premature_partial": 2.59}, "snr20": {"cer": 10.76, "p50": 0.6847, "p90": 0.8376, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 23.12, "first_partial": 1.0094, "premature_partial": 3.07}, "snr10": {"cer": 13.34, "p50": 0.7183, "p90": 0.9151, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 26.35, "first_partial": 1.0093, "premature_partial": 6.13}, "snr5": {"cer": 17.25, "p50": 0.7296, "p90": 1.0208, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 31.96, "first_partial": 1.0095, "premature_partial": 6.84}, "snr0": {"cer": 24.34, "p50": 0.7323, "p90": 1.1431, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 38.39, "first_partial": 1.1087, "premature_partial": 6.84}} },
+  { id:"B3", name:"Qwen3-ASR-0.6B 오프라인", rtfx:52.79, cond:{"clean": {"cer": 11.53, "p50": 0.7496, "p90": 0.87, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 11.4, "p50": 0.7711, "p90": 0.9075, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 14.49, "p50": 0.8002, "p90": 1.0037, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 19.05, "p50": 0.811, "p90": 1.1259, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 26.88, "p50": 0.8145, "p90": 1.244, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
+  { id:"B4", name:"Qwen3-ASR-0.6B 스트리밍", rtfx:14.81, cond:{"clean": {"cer": 12.01, "p50": 0.5897, "p90": 0.6656, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 14.44, "first_partial": 1.0094, "premature_partial": 2.59}, "snr20": {"cer": 11.96, "p50": 0.615, "p90": 0.7114, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 15.45, "first_partial": 1.0095, "premature_partial": 3.07}, "snr10": {"cer": 14.99, "p50": 0.644, "p90": 0.8181, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 18.33, "first_partial": 1.0095, "premature_partial": 5.9}, "snr5": {"cer": 20.36, "p50": 0.6502, "p90": 0.9352, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 24.93, "first_partial": 1.0096, "premature_partial": 6.84}, "snr0": {"cer": 28.37, "p50": 0.6554, "p90": 1.0839, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 34.06, "first_partial": 1.1087, "premature_partial": 6.84}} }
 ];
 
 const EXAMPLES = [
-  // { condition:"SNR 0 dB", ref:"...", hyp:"...", system:"B4", note:"종료 검출 0.6초 지연" }
+  {"condition": "Clean", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 noise floor. 발화 CER 0.0%"},
+  {"condition": "SNR 10 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "국회에서 청문 보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 event. 발화 CER 0.0%"},
+  {"condition": "SNR 0 dB", "ref": "국회에서 청문보고서가 채택되지 않아도 대통령이 임명 권한을 갖고 경찰청장 임명을 강행할 수 있다", "hyp": "이게요 생일 복을 더 잘 찾지 못해 안 하고 제품명이 인명 건안을 갖고 경찰청장 인명을 강행할 수 있다.", "system": "B2", "note": "같은 발화, 잡음 event. 발화 CER 58.5%"},
+  {"condition": "Clean", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 noise floor. 발화 CER 0.0%"},
+  {"condition": "SNR 10 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 traffic. 발화 CER 0.0%"},
+  {"condition": "SNR 0 dB", "ref": "그래서 단순히 라벨로 표기했을 가능성이 높다.", "hyp": "그래서 관심을 아르노 퓨토스 가능성이 높다.", "system": "B2", "note": "같은 발화, 잡음 traffic. 발화 CER 52.6%"},
+  {"condition": "Clean", "ref": "이 동물은 물에 들어오는 모든 것 역시 공격했으며, 티라노사우르스처럼 거대한 공룡도 당해내지 못할 정도였습니다.", "hyp": "이 동물은 물에 들어오는 모든 것 역시 공격했으며.", "system": "B2", "note": "조기 절단: 문장 내 쉼에서 VAD가 정답 종료보다 5.10초 먼저 끊어 뒷부분이 빠짐"},
+  {"condition": "SNR 0 dB", "ref": "크러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 두껍습니다.", "hyp": "[첫 부분결과] 네. → [최종] 플러스트는 마리아 아래에서 더 얇고 고원 아래에서 더 높습니다.", "system": "B2", "note": "발화 시작 2.49초 전에 잡음(crowd)만 듣고 첫 부분결과를 냄"}
 ];
 /* ===================================================================== */
 

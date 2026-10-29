@@ -1,0 +1,274 @@
+{
+  "system_id": "B3",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "mode": "offline",
+  "hardware": "NVIDIA L4",
+  "rtfx": 52.79,
+  "cond": {
+    "clean": {
+      "cer": 11.53,
+      "p50": 0.7496,
+      "p90": 0.87,
+      "endpoint": 0.504,
+      "early_cut": 10.14,
+      "revision": null,
+      "first_partial": null,
+      "premature_partial": null,
+      "n": 424,
+      "start_err": -0.018,
+      "missed": 0.0,
+      "rtfx": 51.95,
+      "n_latency": 424
+    },
+    "snr20": {
+      "cer": 11.4,
+      "p50": 0.7711,
+      "p90": 0.9075,
+      "endpoint": 0.528,
+      "early_cut": 9.2,
+      "revision": null,
+      "first_partial": null,
+      "premature_partial": null,
+      "n": 424,
+      "start_err": -0.018,
+      "missed": 0.0,
+      "rtfx": 51.61,
+      "n_latency": 424
+    },
+    "snr10": {
+      "cer": 14.49,
+      "p50": 0.8002,
+      "p90": 1.0037,
+      "endpoint": 0.548,
+      "early_cut": 10.61,
+      "revision": null,
+      "first_partial": null,
+      "premature_partial": null,
+      "n": 424,
+      "start_err": -0.01,
+      "missed": 0.0,
+      "rtfx": 52.58,
+      "n_latency": 424
+    },
+    "snr5": {
+      "cer": 19.05,
+      "p50": 0.811,
+      "p90": 1.1259,
+      "endpoint": 0.552,
+      "early_cut": 12.5,
+      "revision": null,
+      "first_partial": null,
+      "premature_partial": null,
+      "n": 424,
+      "start_err": -0.002,
+      "missed": 0.0,
+      "rtfx": 53.27,
+      "n_latency": 424
+    },
+    "snr0": {
+      "cer": 26.88,
+      "p50": 0.8145,
+      "p90": 1.244,
+      "endpoint": 0.56,
+      "early_cut": 15.09,
+      "revision": null,
+      "first_partial": null,
+      "premature_partial": null,
+      "n": 424,
+      "start_err": 0.01,
+      "missed": 0.0,
+      "rtfx": 54.65,
+      "n_latency": 424
+    }
+  },
+  "noisy_avg": {
+    "cer": 17.95,
+    "p90": 1.0703,
+    "p90_max": 1.244
+  },
+  "latency_constraint_p90_sec": 1.0,
+  "meets_latency_constraint": false,
+  "by_source": {
+    "fleurs": {
+      "clean": 14.39,
+      "snr20": 15.92,
+      "snr10": 17.87,
+      "snr5": 21.6,
+      "snr0": 25.74
+    },
+    "zeroth": {
+      "clean": 9.21,
+      "snr20": 7.72,
+      "snr10": 11.74,
+      "snr5": 16.97,
+      "snr0": 27.8
+    }
+  },
+  "normalizer_version": "1.1",
+  "missing_predictions": [],
+  "worst_examples": [
+    {
+      "id": "zeroth_0240_snr0",
+      "condition": "snr0",
+      "cer": 100.0,
+      "ref": "일각에서는 카드사가 현금서비스 카드론 등의 금리를 높이는 방법으로 줄어든 수수료수입을 벌충할 수 있다는 우려도 나온다",
+      "hyp": "네네."
+    },
+    {
+      "id": "zeroth_0218_snr5",
+      "condition": "snr5",
+      "cer": 100.0,
+      "ref": "탄핵안 기각 소식에 실망한 촛불 시민 일부가 극단적 행동을 행할 가능성도 배제할 수 없다",
+      "hyp": "응."
+    },
+    {
+      "id": "zeroth_0218_snr10",
+      "condition": "snr10",
+      "cer": 100.0,
+      "ref": "탄핵안 기각 소식에 실망한 촛불 시민 일부가 극단적 행동을 행할 가능성도 배제할 수 없다",
+      "hyp": "응"
+    },
+    {
+      "id": "zeroth_0218_snr0",
+      "condition": "snr0",
+      "cer": 100.0,
+      "ref": "탄핵안 기각 소식에 실망한 촛불 시민 일부가 극단적 행동을 행할 가능성도 배제할 수 없다",
+      "hyp": "응."
+    },
+    {
+      "id": "zeroth_0181_snr0",
+      "condition": "snr0",
+      "cer": 100.0,
+      "ref": "그런데 지금 미국은 중국보고 하라고 했는데 하지 않으면 우리가 하겠다 이러고 있는데요",
+      "hyp": "네."
+    },
+    {
+      "id": "zeroth_0176_snr20",
+      "condition": "snr20",
+      "cer": 100.0,
+      "ref": "그녀가 사실을 이야기 할 수 있도록 설득하는 것이 중요하다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0176_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "그녀가 사실을 이야기 할 수 있도록 설득하는 것이 중요하다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0172_snr5",
+      "condition": "snr5",
+      "cer": 100.0,
+      "ref": "정신병원은 의료급여 예산을 지급받는 방법으로 수익을 얻기 때문에 정신병상수는 당연히 수익으로 연결될 수밖에 없다",
+      "hyp": "그러니까."
+    },
+    {
+      "id": "zeroth_0172_snr10",
+      "condition": "snr10",
+      "cer": 100.0,
+      "ref": "정신병원은 의료급여 예산을 지급받는 방법으로 수익을 얻기 때문에 정신병상수는 당연히 수익으로 연결될 수밖에 없다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0172_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "정신병원은 의료급여 예산을 지급받는 방법으로 수익을 얻기 때문에 정신병상수는 당연히 수익으로 연결될 수밖에 없다",
+      "hyp": "어."
+    },
+    {
+      "id": "zeroth_0168_snr0",
+      "condition": "snr0",
+      "cer": 100.0,
+      "ref": "전통시장은 이보다 비싼 구천 삼백 원선에 제품을 팔았다",
+      "hyp": "업."
+    },
+    {
+      "id": "zeroth_0153_snr20",
+      "condition": "snr20",
+      "cer": 100.0,
+      "ref": "한 중견법조인은 성추행을 한 대학교수를 구속하면 그게 반 대학정서를 확산시키는 것이냐 고 반문하면서 사안을 있는 그대로 보면 된다",
+      "hyp": "아."
+    },
+    {
+      "id": "zeroth_0147_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "도시의 사람들은 나무와 자원을 확보하기 위해 아프리카 밀림을 파괴해 나갔다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0140_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "실제로 우두머리 수컷은 화가 나거나 흥분하면 코가 부풀어 오르면서 빨개집니다",
+      "hyp": "이."
+    },
+    {
+      "id": "zeroth_0098_snr0",
+      "condition": "snr0",
+      "cer": 100.0,
+      "ref": "오히려 그는 사람들이 이 문제에 대해 서로 다른 결정을 내릴 수 있다는 사실을 인정하였습니다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0071_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "이번 신동욱 앵커의 클로징 멘트는 그런 면에서 더욱 상징적이다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0069_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "일각에서는 급격히 팽창한 신규 시장이 트렌드의 변화로 해당 시장과 관련시장을 위축 시킨다는 염려의 시각도 있다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0063_clean",
+      "condition": "clean",
+      "cer": 100.0,
+      "ref": "그러면서 이 연구사는 위가 네 개나 되는 소의 소화과정을 보다 자세하게 설명했다",
+      "hyp": "."
+    },
+    {
+      "id": "zeroth_0061_snr20",
+      "condition": "snr20",
+      "cer": 100.0,
+      "ref": "검거 당시 정씨 아들로 추정되는 이천 십 오 년생 아이도 있었다고 경찰은 전했다",
+      "hyp": "어."
+    },
+    {
+      "id": "zeroth_0061_snr10",
+      "condition": "snr10",
+      "cer": 100.0,
+      "ref": "검거 당시 정씨 아들로 추정되는 이천 십 오 년생 아이도 있었다고 경찰은 전했다",
+      "hyp": ""
+    }
+  ],
+  "environment": {
+    "python": "3.13.16",
+    "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "vllm": "0.14.0",
+    "qwen-asr": "0.0.6",
+    "silero-vad": "6.2.3",
+    "gpu": "NVIDIA L4",
+    "cuda": "12.8",
+    "config": {
+      "system_id": "B3",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "mode": "offline",
+      "description": "0.6B offline: lightweight model",
+      "backend": "vllm",
+      "gpu_memory_utilization": 0.8,
+      "max_new_tokens": 256
+    },
+    "mock": false,
+    "repeats": 1,
+    "n_utterances": 2120
+  }
+}

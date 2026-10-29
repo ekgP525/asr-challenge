@@ -88,6 +88,7 @@ def main():
     ap.add_argument("--jitter", default=None)
     ap.add_argument("--env", default=None, help="environment.json from any run")
     ap.add_argument("--n-examples", type=int, default=8)
+    ap.add_argument("--examples", default=None, help="curated examples JSON (from evaluation/pick_examples.py); overrides worst-CER picks")
     ap.add_argument("--also", nargs="*", default=[], help="extra copies to write (e.g. the submission file)")
     a = ap.parse_args()
 
@@ -99,7 +100,11 @@ def main():
         sys.exit("no results/B*.json")
     html = open(a.page, encoding="utf-8").read()
     html = replace_block(html, "RESULTS", results_block(results))
-    html = replace_block(html, "EXAMPLES", examples_block(results, a.n_examples))
+    if a.examples:
+        ex = json.load(open(a.examples, encoding="utf-8"))
+        html = replace_block(html, "EXAMPLES", "const EXAMPLES = [\n" + ",\n".join("  " + js(e) for e in ex) + "\n];")
+    else:
+        html = replace_block(html, "EXAMPLES", examples_block(results, a.n_examples))
     env = None
     if a.env:
         env = json.load(open(a.env, encoding="utf-8"))
@@ -109,8 +114,8 @@ def main():
         html = replace_env(html, env_rows(env))
     if a.jitter:
         j = json.load(open(a.jitter, encoding="utf-8"))
-        note = (f'["측정", "가상 시계 시뮬레이션, 발화당 1회 측정. 흔들림 검증: B2 {j["n"]}발화 3회 반복 대비 '
-                f'최종 지연 차이 중앙값 {j["median_abs_diff_s"]*1000:.0f} ms, 최대 {j["max_abs_diff_s"]*1000:.0f} ms"]')
+        note = (f'["측정", "가상 시계 시뮬레이션, 발화당 1회 측정. 흔들림 검증: B2 {j["n"]}개 평가 파일({j["n"]//5}발화 × 5조건) 3회 반복 중앙값 대비 '
+                f'최종 지연 차이 중앙값 {j["median_abs_diff_s"]*1000:.0f} ms, p90 {j["p90_single_s"]:.3f} s vs {j["p90_median3_s"]:.3f} s"]')
         html = re.sub(r'\["측정", "[^"]*"\]', note, html, count=1)
     for dst in [a.page] + a.also:
         with open(dst, "w", encoding="utf-8") as f:

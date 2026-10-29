@@ -1,0 +1,8 @@
+{
+  "n": 200,
+  "median_abs_diff_s": 0.0293,
+  "max_abs_diff_s": 1.7075,
+  "mean_diff_s": 0.0505,
+  "p90_single_s": 0.8662,
+  "p90_median3_s": 0.831
+}
