@@ -27,6 +27,8 @@ qwen-asr 0.0.6 API used here:
 
 `--mock` replaces the model with a dummy system so the whole pipeline (simulator, VAD,
 records, evaluate.py) can be exercised on a CPU; its outputs are not results.
+`--resume` continues an interrupted run: utterances present in both output files are
+kept and skipped, the rest are appended (warm-up runs again).
 """
 from __future__ import annotations
 
@@ -172,6 +174,7 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=None, help="debug: first N utterances")
     ap.add_argument("--repeats", type=int, default=None, help="override latency_config repeats")
     ap.add_argument("--mock", action="store_true", help="dummy system (pipeline test, no GPU)")
+    ap.add_argument("--resume", action="store_true", help="skip utterances already in <out-dir>/predictions.jsonl and append")
     args = ap.parse_args(argv)
 
     with open(args.config, encoding="utf-8") as f:
@@ -199,8 +202,24 @@ def main(argv=None):
     with open(os.path.join(args.out_dir, "environment.json"), "w", encoding="utf-8") as f:
         json.dump(env, f, indent=2, ensure_ascii=False)
 
-    pred_f = open(os.path.join(args.out_dir, "predictions.jsonl"), "w", encoding="utf-8")
-    lat_f = None if args.no_latency else open(os.path.join(args.out_dir, "latency.jsonl"), "w", encoding="utf-8")
+    pred_path = os.path.join(args.out_dir, "predictions.jsonl")
+    lat_path = os.path.join(args.out_dir, "latency.jsonl")
+    done = set()
+    if args.resume and os.path.exists(pred_path):
+        done = {r["id"] for r in read_jsonl(pred_path)}
+        if not args.no_latency and os.path.exists(lat_path):
+            done &= {r["id"] for r in read_jsonl(lat_path)}   # keep only utterances complete in both files
+        # rewrite both files with the consistent set so a crash between the two writes leaves no orphan
+        for path in (pred_path,) + (() if args.no_latency else (lat_path,)):
+            if os.path.exists(path):
+                rows = [r for r in read_jsonl(path) if r["id"] in done]
+                with open(path, "w", encoding="utf-8") as f:
+                    for r in rows:
+                        f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        print(f"resume: {len(done)} utterances already done", flush=True)
+    todo = [u for u in utts if u["id"] not in done]
+    pred_f = open(pred_path, "a" if args.resume else "w", encoding="utf-8")
+    lat_f = None if args.no_latency else open(lat_path, "a" if args.resume else "w", encoding="utf-8")
     vad = None if args.no_latency else SileroEndpointer(lcfg)
 
     def run_once(a):
@@ -218,7 +237,7 @@ def main(argv=None):
             else:
                 run_offline(a, sr, u, system, lcfg, vad)
 
-    for i, u in enumerate(utts):
+    for i, u in enumerate(todo):
         a = load_audio(os.path.join(args.audio_root, u["audio"]), sr)
         if args.no_latency:
             text = run_once(a)
@@ -234,7 +253,7 @@ def main(argv=None):
         pred_f.write(json.dumps({"id": u["id"], "text": text}, ensure_ascii=False) + "\n")
         pred_f.flush()
         if (i + 1) % 50 == 0:
-            print(f"{i + 1}/{len(utts)}", flush=True)
+            print(f"{len(done) + i + 1}/{len(utts)}", flush=True)
 
     pred_f.close()
     if lat_f:
