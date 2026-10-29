@@ -28,10 +28,10 @@ NOISY = CONDITIONS[1:]
 def load_results(results_dir: str) -> list:
     out = []
     for p in sorted(glob.glob(os.path.join(results_dir, "*.json"))):
-        if os.path.basename(p) == "leaderboard.json":
-            continue
         with open(p, encoding="utf-8") as f:
-            out.append(json.load(f))
+            r = json.load(f)
+        if isinstance(r, dict) and "system_id" in r and "cond" in r:   # skip leaderboard.json, jitter_*.json, ...
+            out.append(r)
     return out
 
 
