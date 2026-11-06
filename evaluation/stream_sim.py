@@ -17,8 +17,11 @@ Protocol (identical for every system):
   up sees exactly real-time behaviour; one that falls behind accumulates queueing
   delay, as it would with a live microphone. No sleeping, so a run costs only the
   compute time, and results are deterministic given the measured costs.
-* Silero VAD with the parameters in `latency_config.json` runs on every chunk
-  for every system, so end-of-speech detection is charged equally.
+* Endpointer: the default is Silero VAD with the parameters in
+  `latency_config.json`, but a system may bring its own (`build_endpointer`,
+  config key "endpointer"). Whatever detects the end, its wall-clock cost is
+  charged to the same virtual clock, and endpoint error / early-cut rate are
+  reported per system, so a better endpointer shows up in both latency and CER.
 * Ground-truth `speech_start` / `speech_end` come from the manifest (VAD on the
   clean audio before noise mixing). The evaluation audio carries 1 s of noise
   before and after the utterance, so the endpointer has to find the end
@@ -67,6 +70,18 @@ class StreamingSystem(Protocol):
     def push(self, chunk, sample_rate: int) -> Optional[str]:
         """Feed one chunk; return the current partial transcript (or None)."""
     def finalize(self) -> str: ...
+
+
+class Endpointer(Protocol):
+    """End-of-speech detector fed with the same chunks as the system (before the system sees them).
+
+    `feed` returns {"start": abs_sample | None, "end_detect": abs_sample | None}: `start` is reported
+    once, when speech begins (the ASR gate opens `preroll_ms` before it); `end_detect` is the absolute
+    stream position (samples) at which the end was decided - the simulator moves the clock to that
+    position, so the decision cannot be earlier than the audio it needed. Its wall-clock cost is charged.
+    """
+    def reset(self) -> None: ...
+    def feed(self, chunk) -> dict: ...
 
 
 @dataclass
@@ -135,6 +150,41 @@ class SileroEndpointer:
         return out
 
 
+def build_endpointer(cfg: dict, spec=None, system=None) -> Endpointer:
+    """Endpointer from a system config's "endpointer" entry (None / "default" = shared Silero VAD).
+
+    {"type": "silero", "vad": {...}}            Silero VAD with overridden parameters
+    {"type": "custom", "module": "participants.my_ep", "class": "MyEndpointer", "params": {...}}
+        -> module.MyEndpointer(cfg=<latency config>, params=<params>, system=<the ASR system>)
+    `system` lets an endpointer look at the recognizer's state (e.g. partial transcripts); note that
+    for a chunk, feed() runs before the system's push() for that chunk.
+    """
+    if spec is None or spec == "default":
+        return SileroEndpointer(cfg)
+    if not isinstance(spec, dict):
+        raise ValueError(f"endpointer spec must be null, 'default' or an object, got {spec!r}")
+    kind = spec.get("type", "silero")
+    if kind == "silero":
+        merged = dict(cfg)
+        merged["vad"] = {**cfg["vad"], **spec.get("vad", {})}
+        return SileroEndpointer(merged)
+    if kind == "custom":
+        import importlib
+        cls = getattr(importlib.import_module(spec["module"]), spec["class"])
+        return cls(cfg=cfg, params=spec.get("params", {}), system=system)
+    raise ValueError(f"unknown endpointer type {kind!r}")
+
+
+def describe_endpointer(spec=None) -> str:
+    """Short label for results / leaderboard."""
+    if spec is None or spec == "default":
+        return "default"
+    if spec.get("type", "silero") == "silero":
+        ov = spec.get("vad", {})
+        return "silero(" + ", ".join(f"{k}={v}" for k, v in ov.items()) + ")" if ov else "silero"
+    return f"custom:{spec.get('module')}.{spec.get('class')}"
+
+
 # --------------------------------------------------------------------------- #
 # Simulator
 # --------------------------------------------------------------------------- #
@@ -163,7 +213,7 @@ class _Clock:
 
 
 def run_offline(audio, sr: int, utt: dict, system: OfflineSystem, cfg: dict,
-                vad: SileroEndpointer) -> UttRecord:
+                vad: Endpointer) -> UttRecord:
     import numpy as np
 
     vad.reset()
@@ -207,7 +257,7 @@ def run_offline(audio, sr: int, utt: dict, system: OfflineSystem, cfg: dict,
 
 
 def run_streaming(audio, sr: int, utt: dict, system: StreamingSystem, cfg: dict,
-                  vad: SileroEndpointer) -> UttRecord:
+                  vad: Endpointer) -> UttRecord:
     vad.reset()
     system.reset()
     clk = _Clock()

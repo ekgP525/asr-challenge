@@ -243,7 +243,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
   </div>
   <div class="flow" aria-label="처리 흐름">
     <div><b>음성 입력</b><span>야외 잡음 합성, 0.5초 청크로 실시간 공급</span></div>
-    <div><b>VAD</b><span>Silero VAD, 전 시스템 동일 설정. 발화 시작을 잡은 뒤에야 ASR에 전달</span></div>
+    <div><b>엔드포인터</b><span>기본 Silero VAD(베이스라인 공통). 참가 시스템이 교체 가능. 발화 시작을 잡은 뒤에야 ASR에 전달</span></div>
     <div><b>ASR</b><span>참가 시스템 (시작 200 ms 전부터 종료 검출까지의 오디오를 받음)</span></div>
     <div><b>텍스트 출력</b><span>부분결과와 최종결과 시각 기록</span></div>
   </div>
@@ -252,6 +252,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
     <ul class="plain">
       <li>잡음 4개 조건 각각에서 p90 최종 지연이 1.0초 이하인 시스템만 메인 순위에 포함하고, 한 조건이라도 넘으면 순위 없이 따로 표시합니다.</li>
       <li>메인 순위는 잡음 4개 조건 평균 CER이 낮은 순이며, 같으면 잡음 4개 조건 평균 p90 최종 지연이 짧은 쪽이 앞섭니다.</li>
+      <li>참가 시스템은 ASR과 엔드포인터 한 쌍입니다. 기본 엔드포인터(Silero VAD)를 그대로 써도 되고 직접 구현한 것으로 바꿔도 되며, 어느 쪽이든 연산 시간이 같은 가상 시계에 더해지고 종료 검출 오차·조기 절단율이 시스템별로 함께 공개됩니다.</li>
     </ul>
   </div>
 </section>
@@ -324,7 +325,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
     <h3>지연 측정 프로토콜</h3>
     <ul class="plain">
       <li>가상 시계: 청크 i는 스트림 시각 (i+1)×0.5초에 도착하고, 시계는 도착 시각까지 전진한 뒤 VAD·모델 호출의 실측 처리 시간만큼 더 전진합니다. 처리가 공급을 따라가면 실시간 재생과 같고, 못 따라가면 대기 지연이 누적됩니다.</li>
-      <li>엔드포인터: Silero VAD, threshold 0.5, min silence <span class="num">500</span> ms, 32 ms 프레임 단위. 원본 424발화의 문장 내 최대 쉼이 p95 0.5초라 300 ms면 clean에서도 15.6%가 조기 절단되고, 800 ms면 종료 검출만으로 0.8초를 써서 1초 예산이 무의미해집니다.</li>
+      <li>기본 엔드포인터: Silero VAD, threshold 0.5, min silence <span class="num">500</span> ms, 32 ms 프레임 단위. 베이스라인 B1~B4가 공통으로 사용하며, 참가 시스템은 설정의 <code>endpointer</code> 키로 파라미터를 바꾸거나 직접 구현한 검출기를 꽂을 수 있습니다(종료 판단 위치는 그 판단에 쓴 마지막 오디오 위치여야 함). 원본 424발화의 문장 내 최대 쉼이 p95 0.5초라 300 ms면 clean에서도 15.6%가 조기 절단되고, 800 ms면 종료 검출만으로 0.8초를 써서 1초 예산이 무의미해집니다.</li>
       <li>VAD 게이트: 발화 시작이 검출된 뒤에야 ASR에 오디오를 넘깁니다(시작 200 ms 전부터). 게이트 없이 흘려 넣으면 접두부를 고정하는 스트리밍 인식기가 발화 전 구간에서 환각한 문장을 고정해 발화 전체를 엉뚱한 문장으로 바꾸는 일이 생깁니다(사전 점검: 같은 오디오가 clean 18%, 20 dB 1.4% CER).</li>
       <li>오프라인 시스템: VAD 종료 검출 시점까지의 구간을 한 번에 추론. 스트리밍 시스템: <span class="num">0.5</span>초 청크를 이어 넣고 부분결과가 바뀔 때마다 시각 기록</li>
       <li>모델 로드 후 측정과 같은 경로로 3발화 워밍업, 발화당 1회 측정. B2 40발화를 3회 반복해 1회 측정과 3회 중앙값의 차이를 별도로 보고</li>
@@ -365,7 +366,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
     <table>
       <thead>
         <tr>
-          <th>순위</th><th>시스템</th>
+          <th>순위</th><th>시스템</th><th>엔드포인터</th>
           <th class="r">CER<br>잡음 평균 ↓</th>
           <th class="r">CER<br>Clean</th>
           <th class="r">CER<br>20 dB</th><th class="r">CER<br>10 dB</th><th class="r">CER<br>5 dB</th><th class="r">CER<br>0 dB</th>
@@ -386,7 +387,7 @@ footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-si
     <ul class="plain">
       <li>네 시스템 모두 잡음 조건 중 하나 이상에서 p90 최종 지연이 1.0초를 넘어 메인 순위는 비어 있습니다. 가장 가까운 것은 B4(0 dB에서만 1.08초)이고, B2는 5 dB부터, B3는 10 dB부터, B1은 Clean에서도 넘습니다. 정확도 순서(B1 &lt; B2 &lt; B3 &lt; B4)와 지연 순서는 정반대입니다.</li>
       <li>지연이 늘어나는 주 원인은 잡음 속 종료 검출입니다. 종료 검출 지연 p90이 Clean 0.56초에서 0 dB 0.99초로 늘고, 그 위에 오프라인은 종료 후 전체 추론(B1 p90 0.80초)을, 스트리밍은 마지막 청크 처리(0.15~0.29초)만 더합니다.</li>
-      <li>CER은 두 경로로 오릅니다. 엔드포인터가 문장 내 쉼에서 발화를 일찍 끊는 조기 절단이 Clean 43개에서 0 dB 64개로 늘고(절단 발화의 CER 66~75%), 절단되지 않은 발화의 인식 오류도 2.5~4.3%에서 12~19%로 4~5배 늘어납니다. 엔드포인터는 모든 시스템이 공유하므로 순위에는 영향이 없습니다.</li>
+      <li>CER은 두 경로로 오릅니다. 엔드포인터가 문장 내 쉼에서 발화를 일찍 끊는 조기 절단이 Clean 43개에서 0 dB 64개로 늘고(절단 발화의 CER 66~75%), 절단되지 않은 발화의 인식 오류도 2.5~4.3%에서 12~19%로 4~5배 늘어납니다. 베이스라인 넷은 기본 엔드포인터를 공유하므로 이 수치가 같고, 0 dB 종료 검출 지연 p90이 0.99초라 기본 엔드포인터로는 1.0초 제약을 넘기 어렵습니다. 잡음 속 종료 검출이 참가 시스템이 풀어야 할 문제의 절반입니다.</li>
       <li>스트리밍은 잡음이 커질수록 이미 보여준 텍스트를 고치는 일이 늘고(수정률 B2 19% → 38%), 발화 시작 전에 잡음만 듣고 텍스트를 내는 비율도 3% → 7%로 늘어납니다.</li>
     </ul>
   </div>
@@ -493,10 +494,10 @@ const BASELINES = [
 
 const C = () => ({ cer:null, p50:null, p90:null, start_err:null, endpoint:null, missed:null, early_cut:null, revision:null, first_partial:null, premature_partial:null });
 const RESULTS = [
-  { id:"B1", name:"Qwen3-ASR-1.7B 오프라인", rtfx:22.35, cond:{"clean": {"cer": 10.31, "p50": 1.0579, "p90": 1.3273, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 9.88, "p50": 1.0797, "p90": 1.3578, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 12.53, "p50": 1.1165, "p90": 1.4623, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 16.01, "p50": 1.1268, "p90": 1.5451, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 22.86, "p50": 1.116, "p90": 1.5933, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
-  { id:"B2", name:"Qwen3-ASR-1.7B 스트리밍", rtfx:7.66, cond:{"clean": {"cer": 10.77, "p50": 0.6613, "p90": 0.8052, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 19.22, "first_partial": 1.0093, "premature_partial": 2.59}, "snr20": {"cer": 10.76, "p50": 0.6847, "p90": 0.8376, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 23.12, "first_partial": 1.0094, "premature_partial": 3.07}, "snr10": {"cer": 13.34, "p50": 0.7183, "p90": 0.9151, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 26.35, "first_partial": 1.0093, "premature_partial": 6.13}, "snr5": {"cer": 17.25, "p50": 0.7296, "p90": 1.0208, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 31.96, "first_partial": 1.0095, "premature_partial": 6.84}, "snr0": {"cer": 24.34, "p50": 0.7323, "p90": 1.1431, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 38.39, "first_partial": 1.1087, "premature_partial": 6.84}} },
-  { id:"B3", name:"Qwen3-ASR-0.6B 오프라인", rtfx:52.79, cond:{"clean": {"cer": 11.53, "p50": 0.7496, "p90": 0.87, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 11.4, "p50": 0.7711, "p90": 0.9075, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 14.49, "p50": 0.8002, "p90": 1.0037, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 19.05, "p50": 0.811, "p90": 1.1259, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 26.88, "p50": 0.8145, "p90": 1.244, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
-  { id:"B4", name:"Qwen3-ASR-0.6B 스트리밍", rtfx:14.81, cond:{"clean": {"cer": 12.01, "p50": 0.5897, "p90": 0.6656, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 14.44, "first_partial": 1.0094, "premature_partial": 2.59}, "snr20": {"cer": 11.96, "p50": 0.615, "p90": 0.7114, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 15.45, "first_partial": 1.0095, "premature_partial": 3.07}, "snr10": {"cer": 14.99, "p50": 0.644, "p90": 0.8181, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 18.33, "first_partial": 1.0095, "premature_partial": 5.9}, "snr5": {"cer": 20.36, "p50": 0.6502, "p90": 0.9352, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 24.93, "first_partial": 1.0096, "premature_partial": 6.84}, "snr0": {"cer": 28.37, "p50": 0.6554, "p90": 1.0839, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 34.06, "first_partial": 1.1087, "premature_partial": 6.84}} }
+  { id:"B1", name:"Qwen3-ASR-1.7B 오프라인", ep:"default", rtfx:22.35, cond:{"clean": {"cer": 10.31, "p50": 1.0579, "p90": 1.3273, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 9.88, "p50": 1.0797, "p90": 1.3578, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 12.53, "p50": 1.1165, "p90": 1.4623, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 16.01, "p50": 1.1268, "p90": 1.5451, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 22.86, "p50": 1.116, "p90": 1.5933, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
+  { id:"B2", name:"Qwen3-ASR-1.7B 스트리밍", ep:"default", rtfx:7.66, cond:{"clean": {"cer": 10.77, "p50": 0.6613, "p90": 0.8052, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 19.22, "first_partial": 1.0093, "premature_partial": 2.59}, "snr20": {"cer": 10.76, "p50": 0.6847, "p90": 0.8376, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 23.12, "first_partial": 1.0094, "premature_partial": 3.07}, "snr10": {"cer": 13.34, "p50": 0.7183, "p90": 0.9151, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 26.35, "first_partial": 1.0093, "premature_partial": 6.13}, "snr5": {"cer": 17.25, "p50": 0.7296, "p90": 1.0208, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 31.96, "first_partial": 1.0095, "premature_partial": 6.84}, "snr0": {"cer": 24.34, "p50": 0.7323, "p90": 1.1431, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 38.39, "first_partial": 1.1087, "premature_partial": 6.84}} },
+  { id:"B3", name:"Qwen3-ASR-0.6B 오프라인", ep:"default", rtfx:52.79, cond:{"clean": {"cer": 11.53, "p50": 0.7496, "p90": 0.87, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": null, "first_partial": null, "premature_partial": null}, "snr20": {"cer": 11.4, "p50": 0.7711, "p90": 0.9075, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": null, "first_partial": null, "premature_partial": null}, "snr10": {"cer": 14.49, "p50": 0.8002, "p90": 1.0037, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": null, "first_partial": null, "premature_partial": null}, "snr5": {"cer": 19.05, "p50": 0.811, "p90": 1.1259, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": null, "first_partial": null, "premature_partial": null}, "snr0": {"cer": 26.88, "p50": 0.8145, "p90": 1.244, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": null, "first_partial": null, "premature_partial": null}} },
+  { id:"B4", name:"Qwen3-ASR-0.6B 스트리밍", ep:"default", rtfx:14.81, cond:{"clean": {"cer": 12.01, "p50": 0.5897, "p90": 0.6656, "start_err": -0.018, "endpoint": 0.504, "missed": 0.0, "early_cut": 10.14, "revision": 14.44, "first_partial": 1.0094, "premature_partial": 2.59}, "snr20": {"cer": 11.96, "p50": 0.615, "p90": 0.7114, "start_err": -0.018, "endpoint": 0.528, "missed": 0.0, "early_cut": 9.2, "revision": 15.45, "first_partial": 1.0095, "premature_partial": 3.07}, "snr10": {"cer": 14.99, "p50": 0.644, "p90": 0.8181, "start_err": -0.01, "endpoint": 0.548, "missed": 0.0, "early_cut": 10.61, "revision": 18.33, "first_partial": 1.0095, "premature_partial": 5.9}, "snr5": {"cer": 20.36, "p50": 0.6502, "p90": 0.9352, "start_err": -0.002, "endpoint": 0.552, "missed": 0.0, "early_cut": 12.5, "revision": 24.93, "first_partial": 1.0096, "premature_partial": 6.84}, "snr0": {"cer": 28.37, "p50": 0.6554, "p90": 1.0839, "start_err": 0.01, "endpoint": 0.56, "missed": 0.0, "early_cut": 15.09, "revision": 34.06, "first_partial": 1.1087, "premature_partial": 6.84}} }
 ];
 
 const EXAMPLES = [
@@ -549,6 +550,7 @@ const waiting = RESULTS.filter(r => !r.measured);
 const row = (r, rank, cls='') => `<tr class="${cls}">
   <td class="rank num">${rank}</td>
   <td style="white-space:nowrap"><b>${r.id}</b> ${esc(r.name)}</td>
+  <td class="small">${esc(r.ep === 'default' || !r.ep ? '기본' : r.ep)}</td>
   <td class="r num"><b>${val(r.cerNoisy)}</b></td>
   ${ALL.map(k => `<td class="r num">${val(r.cond[k].cer)}</td>`).join('')}
   <td class="r num" style="white-space:nowrap">${val(r.cond.clean.p90,2)} → ${val(r.cond.snr0.p90,2)}</td>

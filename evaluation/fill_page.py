@@ -5,7 +5,7 @@
         [--also submission/Team_이다혜_202422051.html]
 
 The page keeps its data in three JS literals; this script rewrites them in place:
-  const RESULTS = [...];   from results/B*.json (cond values copied verbatim)
+  const RESULTS = [...];   from every results/<system_id>.json (cond values copied verbatim)
   const EXAMPLES = [...];  worst-CER utterances per noisy condition, same utterance's clean output as reference
   CONFIG.env [...]         GPU / CUDA / torch / transformers / vLLM / qwen-asr versions from environment.json
 """
@@ -32,7 +32,8 @@ def results_block(results):
     for r in results:
         name = r["model"].split("/")[-1] + " " + NAMES.get(r["mode"], r["mode"])
         cond = {c: {k: r["cond"][c].get(k) for k in KEYS} for c in ("clean", "snr20", "snr10", "snr5", "snr0") if c in r["cond"]}
-        rows.append(f'  {{ id:{js(r["system_id"])}, name:{js(name)}, rtfx:{js(r.get("rtfx"))}, cond:{js(cond)} }}')
+        rows.append(f'  {{ id:{js(r["system_id"])}, name:{js(name)}, ep:{js(r.get("endpointer", "default"))}, '
+                    f'rtfx:{js(r.get("rtfx"))}, cond:{js(cond)} }}')
     return "const RESULTS = [\n" + ",\n".join(rows) + "\n];"
 
 
@@ -92,12 +93,10 @@ def main():
     ap.add_argument("--also", nargs="*", default=[], help="extra copies to write (e.g. the submission file)")
     a = ap.parse_args()
 
-    results = []
-    for p in sorted(glob.glob(os.path.join(a.results, "B*.json"))):
-        with open(p, encoding="utf-8") as f:
-            results.append(json.load(f))
+    from evaluation.make_leaderboard import load_results
+    results = load_results(a.results)
     if not results:
-        sys.exit("no results/B*.json")
+        sys.exit(f"no result files in {a.results}")
     html = open(a.page, encoding="utf-8").read()
     html = replace_block(html, "RESULTS", results_block(results))
     if a.examples:

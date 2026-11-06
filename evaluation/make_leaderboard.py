@@ -6,6 +6,8 @@ Ranking rule
   conditions. A system that misses it in any condition is listed separately.
 * Primary: average CER over the four noisy conditions (lower is better).
 * Tie-break: average p90 final latency over the noisy conditions.
+* The endpointer is part of the system ("default" = shared Silero VAD); the
+  0 dB endpoint error / early-cut columns show what a custom one changes.
 
 Plot: one path per system through (p90, CER) for clean -> snr20 -> snr10 -> snr5 -> snr0.
 """
@@ -49,6 +51,7 @@ def row(r: dict, rank_no):
     a = r.get("noisy_avg") or {}
     return {
         "rank": rank_no, "system_id": r["system_id"], "model": r["model"], "mode": r["mode"],
+        "endpointer": r.get("endpointer", "default"),
         "noisy_cer": a.get("cer"), "noisy_p90": a.get("p90"), "noisy_p90_max": a.get("p90_max"),
         "clean_cer": c.get("clean", {}).get("cer"),
         "cond": {k: c[k] for k in CONDITIONS if k in c},
@@ -62,21 +65,21 @@ def _f(x, nd=2):
 
 
 def to_markdown(main_rows, other_rows, limit) -> str:
-    hdr = ("| # | System | Model | Mode | Noisy CER (%) ↓ | Clean CER | CER 20/10/5/0 dB | "
+    hdr = ("| # | System | Model | Mode | Endpointer | Noisy CER (%) ↓ | Clean CER | CER 20/10/5/0 dB | "
            "Noisy p90 avg (s) ↓ | p90 max (s) | Endpoint err 0 dB (s) | Early cut 0 dB (%) | "
-           "Revision 0 dB (%) | RTFx ↑ |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+           "Revision 0 dB (%) | RTFx ↑ |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
     def line(x):
         c = x["cond"]
         cers = "/".join(_f(c.get(k, {}).get("cer"), 1) for k in NOISY)
         z = c.get("snr0", {})
         return (f"| {x['rank'] if x['rank'] is not None else '-'} | {x['system_id']} | {x['model']} | {x['mode']} | "
-                f"{_f(x['noisy_cer'])} | {_f(x['clean_cer'])} | {cers} | {_f(x['noisy_p90'], 3)} | "
+                f"{x['endpointer']} | {_f(x['noisy_cer'])} | {_f(x['clean_cer'])} | {cers} | {_f(x['noisy_p90'], 3)} | "
                 f"{_f(x['noisy_p90_max'], 3)} | {_f(z.get('endpoint'), 3)} | {_f(z.get('early_cut'), 1)} | "
                 f"{_f(z.get('revision'), 1)} | {_f(x['rtfx'], 1)} |\n")
 
     md = f"## Main ranking (p90 final latency ≤ {limit:.1f} s in every noisy condition)\n\n" + hdr
-    md += "".join(line(x) for x in main_rows) if main_rows else "| - | (no system meets the constraint yet) ||||||||||||\n"
+    md += "".join(line(x) for x in main_rows) if main_rows else "| - | (no system meets the constraint yet) |||||||||||||\n"
     if other_rows:
         md += "\n## Outside the latency constraint / no Track B measurement\n\n" + hdr
         md += "".join(line(x) for x in other_rows)

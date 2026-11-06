@@ -1,0 +1,20 @@
+{
+  "system_id": "S0",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "mode": "streaming",
+  "description": "example: B4 with the energy-based endpointer (template, not a result)",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256,
+  "streaming": {
+    "chunk_sec": 1.0,
+    "unfixed_chunk_num": 2,
+    "unfixed_token_num": 5
+  },
+  "endpointer": {
+    "type": "custom",
+    "module": "participants.energy_endpointer",
+    "class": "EnergyEndpointer",
+    "params": {"min_silence_ms": 400, "snr_db": 6.0, "pad_ms": 30}
+  }
+}

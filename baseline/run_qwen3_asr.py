@@ -16,6 +16,10 @@ Config keys (baseline/configs/*.json)
     max_new_tokens
     streaming.chunk_sec      model-side decode granularity (the simulator always feeds 0.5 s)
     streaming.unfixed_chunk_num / unfixed_token_num   qwen-asr prefix-rollback parameters
+    endpointer               omitted / "default" = shared Silero VAD (latency_config.json);
+                             {"type": "silero", "vad": {...}} overrides its parameters;
+                             {"type": "custom", "module": ..., "class": ..., "params": {...}} loads
+                             your own (see evaluation/stream_sim.py Endpointer, participants/README.md)
 
 qwen-asr 0.0.6 API used here:
     Qwen3ASRModel.LLM(model=..., gpu_memory_utilization=..., max_new_tokens=...)
@@ -43,7 +47,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from evaluation.stream_sim import (  # noqa: E402
-    SileroEndpointer, load_config, measure_median, run_offline, run_streaming,
+    build_endpointer, describe_endpointer, load_config, measure_median, run_offline, run_streaming,
 )
 
 LANGUAGE = "Korean"
@@ -194,7 +198,7 @@ def main(argv=None):
     os.makedirs(args.out_dir, exist_ok=True)
     env = environment_info()
     env.update({"config": cfg, "mock": args.mock, "repeats": lcfg["repeats"],
-                "n_utterances": len(utts)})
+                "endpointer": describe_endpointer(cfg.get("endpointer")), "n_utterances": len(utts)})
     with open(os.path.join(args.out_dir, "environment.json"), "w", encoding="utf-8") as f:
         json.dump(env, f, indent=2, ensure_ascii=False)
 
@@ -223,7 +227,7 @@ def main(argv=None):
         system = QwenStreaming(cfg) if streaming else QwenOffline(cfg)   # load the model only when needed
     pred_f = open(pred_path, "a" if args.resume else "w", encoding="utf-8")
     lat_f = None if args.no_latency else open(lat_path, "a" if args.resume else "w", encoding="utf-8")
-    vad = None if args.no_latency else SileroEndpointer(lcfg)
+    vad = None if args.no_latency else build_endpointer(lcfg, cfg.get("endpointer"), system)
 
     def run_once(a):
         if streaming:

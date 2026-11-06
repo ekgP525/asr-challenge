@@ -7,7 +7,8 @@ SNR 20/10/5/0 dB로 합성한 평가셋에서, 실시간 스트리밍 조건으�
 - 시나리오: 학생회관 앞 잔디밭의 마스코트 음성 비서. 주변 대화·바람·차량·행사 소리 속에서, 말을 마친 뒤 1초 안에 인식 완료.
 - 챌린지 홈페이지: https://ekgp525.github.io/asr-challenge/
 - Primary metric: 잡음 4조건 평균 **CER**
-- 제약: 잡음 4조건 **각각** p90 최종 지연 ≤ 1.0 s (NVIDIA L4, 동일 VAD 설정)
+- 제약: 잡음 4조건 **각각** p90 최종 지연 ≤ 1.0 s (NVIDIA L4, 동일 시뮬레이터)
+- 참가 시스템 = ASR + 엔드포인터. 기본 엔드포인터(Silero VAD)를 그대로 써도 되고 직접 바꿔도 된다 → [participants/README.md](participants/README.md)
 
 ## Tracks
 
@@ -39,12 +40,16 @@ data/
 evaluation/
   normalizer.py           텍스트 정규화 (고정 규칙, 버전 관리)
   metrics.py              CER
-  stream_sim.py           실시간 공급 시뮬레이터 + Silero VAD 엔드포인터
+  stream_sim.py           실시간 공급 시뮬레이터 + 기본 Silero VAD 엔드포인터 (교체 가능: build_endpointer)
   latency.py              최종 지연, 종료 검출 오차, 조기 절단율, 수정률, RTFx
   latency_config.json     VAD·청크·반복 횟수 등 측정 프로토콜
   evaluate.py             예측 + 지연 기록 → results/<system>.json
   make_leaderboard.py     results/ → 순위표(md/json) + Clean→0 dB 경로 그래프
 results/
+participants/
+  README.md               참가 시스템 만들기 (ASR·엔드포인터 인터페이스, 설정, 실행)
+  energy_endpointer.py    직접 구현 엔드포인터 예시 (에너지 기반)
+  S0_energy_example.json  예시 설정 (B4 + 위 엔드포인터)
 notebooks/reproduce_colab.ipynb   베이스라인 재현
 notebooks/build_dataset_colab.ipynb  평가셋 생성(디스크 부족 시 Colab에서)
 tests/
@@ -82,7 +87,8 @@ Track B는 `evaluation/stream_sim.py`의 `OfflineSystem` / `StreamingSystem` 인
 ### 지연 측정 프로토콜 (`evaluation/latency_config.json`)
 
 - 청크 0.5 s 단위 공급을 이벤트 시간으로 시뮬레이션한다. 청크 i는 스트림 시각 (i+1)×0.5 s에 도착하고, 가상 시계는 도착 시각까지 전진한 뒤 VAD·모델 호출의 실측 wall-clock만큼 더 전진한다. 처리가 공급을 따라가면 실시간 재생과 같고, 못 따라가면 대기 지연이 누적된다. sleep이 없어 실행 시간은 순수 연산 시간뿐이다.
-- 엔드포인터는 Silero VAD threshold 0.5, **min silence 500 ms**, speech pad 30 ms. 32 ms 프레임 단위로 동작하므로 검출 시각은 청크 경계가 아니라 해당 프레임 도착 시각이다. 모든 시스템 동일.
+- 기본 엔드포인터는 Silero VAD threshold 0.5, **min silence 500 ms**, speech pad 30 ms. 32 ms 프레임 단위로 동작하므로 검출 시각은 청크 경계가 아니라 해당 프레임 도착 시각이다. 베이스라인 B1~B4는 모두 이 기본값을 쓴다.
+- **엔드포인터는 참가 시스템의 일부다.** 설정의 `endpointer` 키로 Silero 파라미터를 바꾸거나 직접 구현한 것을 꽂을 수 있다(`participants/README.md`). 어느 것이든 연산 시간은 같은 가상 시계에 더해지고, `end_detect`는 판단에 쓴 마지막 오디오 위치여야 하며, 종료 검출 오차·조기 절단율이 시스템별로 리더보드에 실린다. 베이스라인 결과에서 0 dB 종료 검출 지연 p90이 0.99 s라 기본 엔드포인터로는 1.0 s 제약을 넘기 어렵다. 잡음 속 종료 검출이 참가자가 풀 문제의 절반이다.
 - **ASR 공급은 VAD로 게이트된다.** 실제 음성 비서처럼 VAD가 발화 시작을 보고한 뒤에야 모델에 오디오를 넘기며, 넘기는 오디오는 시작 시점 200 ms 전(`preroll_ms`)부터 종료 검출 시점까지다. 스트리밍은 그때까지 버퍼된 오디오를 첫 push로 보내고 이후 0.5 s 청크를 이어 보낸다. VAD가 발화 시작을 못 잡으면 모델은 아무것도 받지 않는다(`missed`로 집계, 해당 발화 CER 100%).
 - 게이트를 두는 이유: Qwen3-ASR 스트리밍은 앞 2청크 이후 이전 출력을 접두부로 고정하므로, 발화 전 무음·잡음 구간에서 만들어진 환각 텍스트가 고정되어 발화 전체가 엉뚱한 문장으로 대체되는 일이 생긴다(첫 GPU 점검에서 clean 조건 CER 18%, 같은 오디오의 20 dB 조건은 1.4%). 게이트 없이 흘려 넣는 것은 배포 구조와도 다르다.
 - min silence를 500 ms로 둔 근거: 원본 424발화의 문장 내 최대 쉼은 p90 0.40 s, p95 0.50 s, 최대 1.5 s다. 300 ms면 clean에서도 15.6%가 조기 절단되고, 800 ms면 0.2%지만 종료 검출만으로 0.8 s를 써서 1.0 s 예산이 무의미해진다. 500 ms는 clean 조기 절단 5.0%를 감수하는 대신 실제 음성 비서 설정에 가깝고 제약이 변별력을 갖는다.
@@ -132,7 +138,7 @@ Track B는 `evaluation/stream_sim.py`의 `OfflineSystem` / `StreamingSystem` 인
 | B3 | 11.5 → 26.9 | 3.8 → 16.8 | 0.56 → 0.99 s | 0.34 s | 0.87 → 1.24 s |
 | B4 | 12.0 → 28.4 | 4.3 → 18.5 | 0.56 → 0.99 s | 0.15 s | 0.67 → 1.08 s |
 
-- 엔드포인터는 네 시스템이 공유하므로 종료 검출 오차·조기 절단율은 시스템과 무관하게 같다(조기 절단 발화 수: clean 43, 20 dB 39, 10 dB 45, 5 dB 53, 0 dB 64). 절단된 발화는 뒷부분이 통째로 빠져 CER이 66~75%에 이르고, 이것이 전체 CER의 큰 몫을 차지한다.
+- 베이스라인 네 시스템은 기본 엔드포인터를 공유하므로 종료 검출 오차·조기 절단율이 같다(조기 절단 발화 수: clean 43, 20 dB 39, 10 dB 45, 5 dB 53, 0 dB 64). 절단된 발화는 뒷부분이 통째로 빠져 CER이 66~75%에 이르고, 이것이 전체 CER의 큰 몫을 차지한다.
 - 절단되지 않은 발화만 보면 clean CER은 2.5~4.3%로 Qwen3-ASR 기술 보고서의 FLEURS 수치와 비슷하고, 0 dB에서 12~19%로 오른다. 즉 **잡음은 인식 오류를 4~5배 늘리는 동시에 조기 절단 발화를 43개에서 64개로 늘려** CER을 두 경로로 올린다.
 - 조기 절단은 낭독 문장의 긴 쉼(min silence 500 ms 초과)에서 생기며, 짧은 질의 중심의 실제 음성 비서 입력에서는 덜 나타날 것이다. 리더보드 CER은 사용자가 겪는 그대로(절단 포함)를 쓰고, 절단 제외 CER은 `results/analysis.json`에 함께 제공한다.
 - 그래프: `results/latency_cer_paths.png` (시스템별 Clean → 0 dB 이동 경로).

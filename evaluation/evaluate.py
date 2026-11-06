@@ -8,7 +8,7 @@ Inputs
 
 Output (same structure the challenge page embeds as RESULTS):
 {
-  "system_id", "model", "mode", "hardware", "rtfx",
+  "system_id", "model", "mode", "endpointer", "hardware", "rtfx",
   "cond": {"clean"|"snr20"|"snr10"|"snr5"|"snr0":
            {"cer", "p50", "p90", "start_err", "endpoint", "missed", "early_cut", "revision", "first_partial", "premature_partial", "n"}},
   "noisy_avg": {"cer", "p90"}, "meets_latency_constraint", "by_source": {...}, ...
@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from evaluation.latency import summarize  # noqa: E402
 from evaluation.metrics import CERAccumulator, utterance_cer  # noqa: E402
 from evaluation.normalizer import NORMALIZER_VERSION  # noqa: E402
-from evaluation.stream_sim import load_config  # noqa: E402
+from evaluation.stream_sim import describe_endpointer, load_config  # noqa: E402
 
 CONDITIONS = ["clean", "snr20", "snr10", "snr5", "snr0"]
 NOISY = ["snr20", "snr10", "snr5", "snr0"]
@@ -127,6 +127,7 @@ def main(argv=None):
 
     result = {
         "system_id": cfg["system_id"], "model": cfg["model"], "mode": cfg["mode"],
+        "endpointer": describe_endpointer(cfg.get("endpointer")),
         "hardware": args.hardware, "rtfx": rtfx, "cond": cond,
         "noisy_avg": noisy_avg, "latency_constraint_p90_sec": limit,
         "meets_latency_constraint": meets,

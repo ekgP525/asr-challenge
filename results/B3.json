@@ -2,6 +2,7 @@
   "system_id": "B3",
   "model": "Qwen/Qwen3-ASR-0.6B",
   "mode": "offline",
+  "endpointer": "default",
   "hardware": "NVIDIA L4",
   "rtfx": 52.79,
   "cond": {
