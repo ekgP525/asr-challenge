@@ -45,11 +45,15 @@ evaluation/
   latency_config.json     VAD·청크·반복 횟수 등 측정 프로토콜
   evaluate.py             예측 + 지연 기록 → results/<system>.json
   make_leaderboard.py     results/ → 순위표(md/json) + Clean→0 dB 경로 그래프
+  endpointer_eval.py      엔드포인터만 평가 (GPU 불필요; 종료 검출 지연·조기 절단·지연 예산)
+  endpointer_whatif.py    기록된 실행에 새 엔드포인터를 투영해 최종 지연·CER 추정
 results/
 participants/
   README.md               참가 시스템 만들기 (ASR·엔드포인터 인터페이스, 설정, 실행)
-  energy_endpointer.py    직접 구현 엔드포인터 예시 (에너지 기반)
-  S0_energy_example.json  예시 설정 (B4 + 위 엔드포인터)
+  energy_endpointer.py    직접 구현 엔드포인터 예시 (에너지 기반, 템플릿)
+  adaptive_silero.py      참가 시스템 S1의 엔드포인터 (종료 임계값 상향 + 부분결과 기반 무음 길이)
+  S1.json / S2.json       참가 시스템 설정 (0.6B / 1.7B), S1_design.md 설계 기록
+  S0_energy_example.json  예시 설정 (B4 + 에너지 엔드포인터)
 notebooks/reproduce_colab.ipynb   베이스라인 재현
 notebooks/build_dataset_colab.ipynb  평가셋 생성(디스크 부족 시 Colab에서)
 tests/

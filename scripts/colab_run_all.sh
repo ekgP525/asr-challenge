@@ -1,11 +1,13 @@
 #!/bin/bash
-# Run the baselines end to end on Colab and keep progress on Drive.
+# Run baselines / participant systems end to end on Colab and keep progress on Drive.
 #   SYSTEMS="B2 B3 B4" nohup bash scripts/colab_run_all.sh > overnight.log 2>&1 &
+#   SYSTEMS="S1 S2"    nohup bash scripts/colab_run_all.sh > s1.log 2>&1 &      # participants/S1.json, S2.json
 # Re-running after a crash continues from Drive: finished systems are skipped,
 # an interrupted system resumes from its partial predictions/latency files.
 set -u
 cd "$(dirname "$0")/.."
-SYSTEMS="${SYSTEMS:-B1 B2 B3 B4}"
+SYSTEMS="${SYSTEMS:-B1 B2 B3 B4}"          # baseline ids (baseline/configs/) or participant ids (participants/)
+config_of() { if [ -f "baseline/configs/$1.json" ]; then echo "baseline/configs/$1.json"; else echo "participants/$1.json"; fi; }
 SAVE="${SAVE:-/content/drive/MyDrive/campusvoice-rt}"
 HW="${HW:-NVIDIA L4}"
 mkdir -p "$SAVE/runs" "$SAVE/results" runs results
@@ -19,10 +21,11 @@ trap 'kill $SYNC_PID 2>/dev/null' EXIT
 for sid in $SYSTEMS; do
   if [ -f "$SAVE/results/$sid.json" ]; then echo "== $sid already done (Drive)"; cp "$SAVE/results/$sid.json" results/; cp -r "$SAVE/runs/$sid" runs/ 2>/dev/null; continue; fi
   if [ -d "$SAVE/runs/$sid" ] && [ ! -f "runs/$sid/predictions.jsonl" ]; then cp -r "$SAVE/runs/$sid" runs/; fi
-  echo "== $sid start $(date)"
-  python baseline/run_qwen3_asr.py --config baseline/configs/$sid.json --manifest data/eval/manifest.jsonl \
+  cfg=$(config_of "$sid"); [ -f "$cfg" ] || { echo "== $sid: no config"; exit 1; }
+  echo "== $sid start $(date) ($cfg)"
+  python baseline/run_qwen3_asr.py --config "$cfg" --manifest data/eval/manifest.jsonl \
       --audio-root data/eval --out-dir runs/$sid --resume || { echo "== $sid FAILED"; sync_to_drive; exit 1; }
-  python evaluation/evaluate.py --config baseline/configs/$sid.json --manifest data/eval/manifest.jsonl \
+  python evaluation/evaluate.py --config "$cfg" --manifest data/eval/manifest.jsonl \
       --predictions runs/$sid/predictions.jsonl --latency runs/$sid/latency.jsonl \
       --env runs/$sid/environment.json --hardware "$HW" || exit 1
   sync_to_drive

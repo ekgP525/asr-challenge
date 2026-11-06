@@ -41,7 +41,23 @@
 - 정답 `speech_end`는 manifest에 있지만 엔드포인터가 읽어서는 안 됩니다. 시뮬레이터는 오디오만 넘깁니다.
 - 종료 검출 오차·조기 절단율이 시스템별로 리더보드에 실리므로, 공격적인 종료 판정은 지연을 줄이는 대신 조기 절단과 CER로 드러납니다.
 
-## 3. 실행·채점
+## 3. 엔드포인터만 먼저 실험하기 (GPU 불필요)
+
+종료 검출 성능은 ASR과 무관하므로 로컬 CPU에서 전체 평가셋(2,120개, 약 1분)을 돌려 볼 수 있다.
+
+```bash
+# 조건별 종료 검출 지연 p50/p90, 조기 절단, 미검출, 남는 지연 예산
+python evaluation/endpointer_eval.py --spec default
+python evaluation/endpointer_eval.py --spec '{"type":"silero","vad":{"threshold":0.8}}'
+python evaluation/endpointer_eval.py --spec participants/S1.json --replay runs/B4/latency.jsonl --out runs/ep/S1.jsonl
+# 기록된 시스템 실행(B1~B4)에 새 엔드포인터를 투영: 최종 지연 p90과 CER 추정
+python evaluation/endpointer_whatif.py --ep runs/ep/S1.jsonl --run runs/B4
+```
+
+`--replay`는 기록된 부분결과를 재생해 텍스트를 읽는 엔드포인터(`system.text`)를 시험한다. 시작 검출이 베이스라인과 같을 때
+정확하다. 설계 과정과 후보 비교는 [S1_design.md](S1_design.md)에 있다.
+
+## 4. 실행·채점
 
 ```bash
 python baseline/run_qwen3_asr.py --config participants/S1.json \
@@ -53,4 +69,13 @@ python evaluation/make_leaderboard.py
 ```
 
 `system_id`는 B1~B4와 겹치지 않게 짓습니다. 결과 JSON과 리더보드에 어떤 엔드포인터를 썼는지 기록됩니다.
-GPU 없이 파이프라인만 확인하려면 `--mock --limit 20`을 붙입니다.
+GPU 없이 파이프라인만 확인하려면 `--mock --limit 20`을 붙입니다. Colab에서는 `SYSTEMS="S1 S2" bash scripts/colab_run_all.sh`로
+`participants/<ID>.json`을 그대로 돌릴 수 있습니다(`notebooks/reproduce_colab.ipynb`).
+
+## 이 레포의 참가 시스템
+
+| ID | 구성 | 상태 |
+|---|---|---|
+| S1 | Qwen3-ASR-0.6B 스트리밍(디코드 청크 0.5 s) + `adaptive_silero.AdaptiveSileroEndpointer` | 설계 완료, L4 측정 대기 |
+| S2 | 위와 같은 엔드포인터 + Qwen3-ASR-1.7B | 비교용 |
+| S0 | 예시 설정(에너지 엔드포인터 템플릿) | 결과 아님 |

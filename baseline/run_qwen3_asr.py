@@ -100,6 +100,11 @@ class QwenStreaming:
         self.model.finish_streaming_transcribe(self.state)
         return self.state.text or ""
 
+    @property
+    def text(self) -> str:
+        """Latest partial transcript (read by text-aware endpointers)."""
+        return (self.state.text if self.state is not None else "") or ""
+
 
 class Mock:
     """CPU stand-in: offline returns the reference-length placeholder; streaming grows per chunk."""
@@ -124,6 +129,10 @@ class Mock:
 
     def finalize(self) -> str:
         return ("목 " * self.n).strip() + " 끝"
+
+    @property
+    def text(self) -> str:
+        return ("목 " * self.n).strip()
 
 
 # --------------------------------------------------------------------------- #

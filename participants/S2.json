@@ -1,0 +1,27 @@
+{
+  "system_id": "S2",
+  "model": "Qwen/Qwen3-ASR-1.7B",
+  "mode": "streaming",
+  "description": "B2 recognizer with a 0.5 s decode chunk and the adaptive endpointer (same as S1); expected to miss the latency constraint at 0 dB, run for the CER comparison",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256,
+  "streaming": {
+    "chunk_sec": 0.5,
+    "unfixed_chunk_num": 2,
+    "unfixed_token_num": 5
+  },
+  "endpointer": {
+    "type": "custom",
+    "module": "participants.adaptive_silero",
+    "class": "AdaptiveSileroEndpointer",
+    "params": {
+      "start_threshold": 0.5,
+      "end_speech_threshold": 0.8,
+      "end_silence_threshold": 0.65,
+      "min_silence_ms": 500,
+      "min_silence_incomplete_ms": 700,
+      "use_text": true
+    }
+  }
+}
