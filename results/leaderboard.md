@@ -2,7 +2,8 @@
 
 | # | System | Model | Mode | Endpointer | Noisy CER (%) ↓ | Clean CER | CER 20/10/5/0 dB | Noisy p90 avg (s) ↓ | p90 max (s) | Endpoint err 0 dB (s) | Early cut 0 dB (%) | Revision 0 dB (%) | RTFx ↑ |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| - | (no system meets the constraint yet) |||||||||||||
+| 1 | S1 | Qwen/Qwen3-ASR-0.6B | streaming | custom:participants.adaptive_silero.AdaptiveSileroEndpointer | 17.20 | 9.44 | 10.1/12.7/17.8/28.3 | 0.761 | 0.830 | 0.504 | 17.0 | 35.2 | 9.7 |
+| 2 | S2 | Qwen/Qwen3-ASR-1.7B | streaming | custom:participants.adaptive_silero.AdaptiveSileroEndpointer | 18.46 | 8.44 | 9.1/11.7/14.8/38.2 | 0.881 | 0.955 | 0.492 | 17.7 | 39.5 | 5.0 |
 
 ## Outside the latency constraint / no Track B measurement
 

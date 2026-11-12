@@ -298,5 +298,155 @@
         "final_p90": 1.084
       }
     }
+  },
+  "S1": {
+    "streaming": true,
+    "cond": {
+      "clean": {
+        "cer_by_source": {
+          "fleurs": 11.07,
+          "zeroth": 8.12
+        },
+        "n_early_cut": 31,
+        "cer_early_cut": 62.82,
+        "cer_not_cut": 4.35,
+        "endpoint_delay_p50": 0.488,
+        "endpoint_delay_p90": 0.544,
+        "compute_after_endpoint_p50": 0.103,
+        "compute_after_endpoint_p90": 0.138,
+        "final_p90": 0.657
+      },
+      "snr20": {
+        "cer_by_source": {
+          "fleurs": 12.62,
+          "zeroth": 8.07
+        },
+        "n_early_cut": 29,
+        "cer_early_cut": 63.63,
+        "cer_not_cut": 4.99,
+        "endpoint_delay_p50": 0.504,
+        "endpoint_delay_p90": 0.576,
+        "compute_after_endpoint_p50": 0.118,
+        "compute_after_endpoint_p90": 0.138,
+        "final_p90": 0.686
+      },
+      "snr10": {
+        "cer_by_source": {
+          "fleurs": 15.84,
+          "zeroth": 10.08
+        },
+        "n_early_cut": 32,
+        "cer_early_cut": 71.23,
+        "cer_not_cut": 6.59,
+        "endpoint_delay_p50": 0.516,
+        "endpoint_delay_p90": 0.64,
+        "compute_after_endpoint_p50": 0.117,
+        "compute_after_endpoint_p90": 0.138,
+        "final_p90": 0.749
+      },
+      "snr5": {
+        "cer_by_source": {
+          "fleurs": 19.43,
+          "zeroth": 16.38
+        },
+        "n_early_cut": 42,
+        "cer_early_cut": 71.18,
+        "cer_not_cut": 10.47,
+        "endpoint_delay_p50": 0.508,
+        "endpoint_delay_p90": 0.672,
+        "compute_after_endpoint_p50": 0.102,
+        "compute_after_endpoint_p90": 0.137,
+        "final_p90": 0.78
+      },
+      "snr0": {
+        "cer_by_source": {
+          "fleurs": 26.33,
+          "zeroth": 29.84
+        },
+        "n_early_cut": 72,
+        "cer_early_cut": 68.32,
+        "cer_not_cut": 18.58,
+        "endpoint_delay_p50": 0.504,
+        "endpoint_delay_p90": 0.716,
+        "compute_after_endpoint_p50": 0.109,
+        "compute_after_endpoint_p90": 0.138,
+        "final_p90": 0.83
+      }
+    }
+  },
+  "S2": {
+    "streaming": true,
+    "cond": {
+      "clean": {
+        "cer_by_source": {
+          "fleurs": 10.03,
+          "zeroth": 7.15
+        },
+        "n_early_cut": 31,
+        "cer_early_cut": 61.83,
+        "cer_not_cut": 3.35,
+        "endpoint_delay_p50": 0.484,
+        "endpoint_delay_p90": 0.544,
+        "compute_after_endpoint_p50": 0.227,
+        "compute_after_endpoint_p90": 0.266,
+        "final_p90": 0.785
+      },
+      "snr20": {
+        "cer_by_source": {
+          "fleurs": 12.35,
+          "zeroth": 6.54
+        },
+        "n_early_cut": 29,
+        "cer_early_cut": 62.83,
+        "cer_not_cut": 4.01,
+        "endpoint_delay_p50": 0.504,
+        "endpoint_delay_p90": 0.568,
+        "compute_after_endpoint_p50": 0.244,
+        "compute_after_endpoint_p90": 0.265,
+        "final_p90": 0.807
+      },
+      "snr10": {
+        "cer_by_source": {
+          "fleurs": 15.07,
+          "zeroth": 8.9
+        },
+        "n_early_cut": 33,
+        "cer_early_cut": 70.87,
+        "cer_not_cut": 5.41,
+        "endpoint_delay_p50": 0.512,
+        "endpoint_delay_p90": 0.628,
+        "compute_after_endpoint_p50": 0.239,
+        "compute_after_endpoint_p90": 0.264,
+        "final_p90": 0.858
+      },
+      "snr5": {
+        "cer_by_source": {
+          "fleurs": 17.99,
+          "zeroth": 12.3
+        },
+        "n_early_cut": 40,
+        "cer_early_cut": 69.67,
+        "cer_not_cut": 7.7,
+        "endpoint_delay_p50": 0.506,
+        "endpoint_delay_p90": 0.684,
+        "compute_after_endpoint_p50": 0.226,
+        "compute_after_endpoint_p90": 0.264,
+        "final_p90": 0.904
+      },
+      "snr0": {
+        "cer_by_source": {
+          "fleurs": 25.42,
+          "zeroth": 48.58
+        },
+        "n_early_cut": 75,
+        "cer_early_cut": 128.48,
+        "cer_not_cut": 15.23,
+        "endpoint_delay_p50": 0.492,
+        "endpoint_delay_p90": 0.712,
+        "compute_after_endpoint_p50": 0.232,
+        "compute_after_endpoint_p90": 0.267,
+        "final_p90": 0.955
+      }
+    }
   }
 }

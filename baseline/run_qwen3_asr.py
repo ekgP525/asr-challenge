@@ -16,6 +16,7 @@ Config keys (baseline/configs/*.json)
     max_new_tokens
     streaming.chunk_sec      model-side decode granularity (the simulator always feeds 0.5 s)
     streaming.unfixed_chunk_num / unfixed_token_num   qwen-asr prefix-rollback parameters
+    postprocess.collapse_repeats   true = truncate a repeating loop in the final text (evaluation/postprocess.py)
     endpointer               omitted / "default" = shared Silero VAD (latency_config.json);
                              {"type": "silero", "vad": {...}} overrides its parameters;
                              {"type": "custom", "module": ..., "class": ..., "params": {...}} loads
@@ -46,6 +47,7 @@ from typing import Optional
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+from evaluation.postprocess import collapse_repeats  # noqa: E402
 from evaluation.stream_sim import (  # noqa: E402
     build_endpointer, describe_endpointer, load_config, measure_median, run_offline, run_streaming,
 )
@@ -68,13 +70,20 @@ def load_qwen(cfg: dict):
                                          max_new_tokens=cfg.get("max_new_tokens", 256))
 
 
+def _guard(cfg: dict):
+    """Final-text post-processing selected by the config."""
+    pp = cfg.get("postprocess", {})
+    return collapse_repeats if pp.get("collapse_repeats") else (lambda t: t)
+
+
 class QwenOffline:
     def __init__(self, cfg: dict):
         self.model = load_qwen(cfg)
+        self.guard = _guard(cfg)
 
     def transcribe(self, audio, sample_rate: int) -> str:
         res = self.model.transcribe(audio=(audio, sample_rate), language=LANGUAGE)
-        return res[0].text if res else ""
+        return self.guard(res[0].text if res else "")
 
 
 class QwenStreaming:
@@ -82,6 +91,7 @@ class QwenStreaming:
         if cfg.get("backend", "vllm") != "vllm":
             raise ValueError("qwen-asr streaming requires backend='vllm'")
         self.model = load_qwen(cfg)
+        self.guard = _guard(cfg)
         st = cfg.get("streaming", {})
         self.kw = dict(language=LANGUAGE, chunk_size_sec=st.get("chunk_sec", 1.0),
                        unfixed_chunk_num=st.get("unfixed_chunk_num", 2),
@@ -98,7 +108,7 @@ class QwenStreaming:
 
     def finalize(self) -> str:
         self.model.finish_streaming_transcribe(self.state)
-        return self.state.text or ""
+        return self.guard(self.state.text or "")
 
     @property
     def text(self) -> str:

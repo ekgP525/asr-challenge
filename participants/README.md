@@ -76,6 +76,7 @@ GPU 없이 파이프라인만 확인하려면 `--mock --limit 20`을 붙입니�
 
 | ID | 구성 | 상태 |
 |---|---|---|
-| S1 | Qwen3-ASR-0.6B 스트리밍(디코드 청크 0.5 s) + `adaptive_silero.AdaptiveSileroEndpointer` | 설계 완료, L4 측정 대기 |
-| S2 | 위와 같은 엔드포인터 + Qwen3-ASR-1.7B | 비교용 |
+| S1 | Qwen3-ASR-0.6B 스트리밍(디코드 청크 0.5 s) + `adaptive_silero.AdaptiveSileroEndpointer` | 측정 완료: 잡음 CER 17.20, 제약 통과 (메인 순위 1위) |
+| S2 | 위와 같은 엔드포인터 + Qwen3-ASR-1.7B | 측정 완료: 18.46, 0 dB 반복 루프 1건 |
+| S1b | S1 + 미완결 대기 900 ms + 반복 가드(`postprocess.collapse_repeats`) | L4 측정 대기 (추정 15.95) |
 | S0 | 예시 설정(에너지 엔드포인터 템플릿) | 결과 아님 |

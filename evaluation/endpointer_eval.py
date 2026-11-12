@@ -44,16 +44,22 @@ class Replay(Silent):
     """Replays partial transcripts recorded in a latency.jsonl so a text-aware endpointer sees what the
     ASR had produced by each chunk's arrival. Exact when the endpointer's start detection equals the
     baseline's (same gate opening -> same pushes); the compute delay of the recorded run is ignored."""
-    def __init__(self, path, sr):
+    def __init__(self, path, sr, preroll_s=0.2):
         self.sr = sr
-        self.partials = {}
+        self.preroll = preroll_s
+        self.partials, self.starts = {}, {}
         for r in read_jsonl(path):
             self.partials[r["id"]] = [(p["t"], p["text"]) for p in r["partials"]]
+            self.starts[r["id"]] = r.get("vad_start")
         self.cur = []
+        self.offset = 0.0
         self.fed = 0
         self.text = ""
     def load(self, uid):
         self.cur = self.partials.get(uid, [])
+        # pushes start at the gate (recorded speech start - preroll): stream time = offset + pushed audio
+        st = self.starts.get(uid)
+        self.offset = max(0.0, st - self.preroll) if st is not None else 0.0
     def reset(self):
         self.fed = 0
         self.text = ""
@@ -61,7 +67,7 @@ class Replay(Silent):
         self.fed += len(chunk)
         # a partial recorded at t was produced by the push of the chunk that arrived at floor(t) (its
         # timestamp includes that push's compute), so it is visible to the next feed(); allow that slack
-        t = self.fed / self.sr + 0.45
+        t = self.offset + self.fed / self.sr + 0.45
         avail = [x for x in self.cur if x[0] <= t]
         self.text = avail[-1][1] if avail else ""
         return None
@@ -150,7 +156,7 @@ def main(argv=None):
                 kept.append(u)
         utts = kept
 
-    system = Replay(args.replay, sr) if args.replay else Silent()
+    system = Replay(args.replay, sr, cfg.get("preroll_ms", 0) / 1000) if args.replay else Silent()
     ep = build_endpointer(cfg, spec, system)
     recs = []
     t0 = time.time()

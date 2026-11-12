@@ -1,0 +1,30 @@
+{
+  "system_id": "S1b",
+  "model": "Qwen/Qwen3-ASR-0.6B",
+  "mode": "streaming",
+  "description": "S1 with the incomplete-sentence wait raised to 900 ms (chosen by replaying S1's own partials: est. noisy CER 15.95, 0 dB p90 0.94 s) and the repetition guard",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256,
+  "streaming": {
+    "chunk_sec": 0.5,
+    "unfixed_chunk_num": 2,
+    "unfixed_token_num": 5
+  },
+  "postprocess": {
+    "collapse_repeats": true
+  },
+  "endpointer": {
+    "type": "custom",
+    "module": "participants.adaptive_silero",
+    "class": "AdaptiveSileroEndpointer",
+    "params": {
+      "start_threshold": 0.5,
+      "end_speech_threshold": 0.8,
+      "end_silence_threshold": 0.65,
+      "min_silence_ms": 500,
+      "min_silence_incomplete_ms": 900,
+      "use_text": true
+    }
+  }
+}
