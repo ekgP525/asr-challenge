@@ -36,6 +36,7 @@ data/
     p56.py                ITU-T P.56 활성 음성 레벨
     mix_noise.py          SNR 4조건 합성, 앞뒤 1 s 잡음 패딩, 시드 고정
     upload_hf.py          평가셋 Hugging Face Datasets 업로드
+    build_train_set.py    참가 시스템 학습셋 (train split + 평가셋과 겹치지 않는 잡음, Qwen SFT jsonl)
     common.py
 evaluation/
   normalizer.py           텍스트 정규화 (고정 규칙, 버전 관리)
@@ -54,7 +55,9 @@ participants/
   adaptive_silero.py      참가 시스템 S1의 엔드포인터 (종료 임계값 상향 + 부분결과 기반 무음 길이)
   S1.json / S2.json       참가 시스템 설정 (0.6B / 1.7B), S1_design.md 설계 기록
   S0_energy_example.json  예시 설정 (B4 + 에너지 엔드포인터)
-notebooks/reproduce_colab.ipynb   베이스라인 재현
+notebooks/reproduce_colab.ipynb   베이스라인·참가 시스템 측정 (L4)
+notebooks/finetune_colab.ipynb    참가 시스템 S3 파인튜닝 (A100)
+scripts/colab_run_all.sh          측정 일괄 실행, scripts/colab_finetune.sh  파인튜닝 + HF 업로드
 notebooks/build_dataset_colab.ipynb  평가셋 생성(디스크 부족 시 Colab에서)
 tests/
 ```
@@ -127,6 +130,7 @@ Track B는 `evaluation/stream_sim.py`의 `OfflineSystem` / `StreamingSystem` 인
 | S1 | Qwen3-ASR-0.6B 스트리밍, 디코드 청크 0.5 s | `participants/adaptive_silero.py`: 시작 0.5(기본과 동일), 종료 0.8/0.65, 부분결과가 종결 어미로 끝나면 500 ms, 아니면 700 ms | 측정 완료 |
 | S2 | Qwen3-ASR-1.7B, 나머지 동일 | 동일 | 측정 완료 (비교용) |
 | S1b | S1 + 미완결 대기 900 ms + 반복 가드 | 동일 | 측정 대기 (S1 부분결과 재생 추정: 잡음 CER 15.95, 0 dB p90 0.94 s) |
+| S3 | S1b + 0.6B 전체 파인튜닝 (Zeroth·FLEURS train + 학습용 잡음, `scripts/colab_finetune.sh`) | 동일 | 학습 대기 |
 
 엔드포인터 설계는 GPU 없이 `evaluation/endpointer_eval.py`(엔드포인터만 실행)와 `evaluation/endpointer_whatif.py`(기록된 실행에 투영)로 골랐다.
 S1 자신의 부분결과를 재생하면 실제 S1의 종료 시각을 2,120개 중 2,086개에서 20 ms 이내로 재현한다. 과정은 `participants/S1_design.md`.

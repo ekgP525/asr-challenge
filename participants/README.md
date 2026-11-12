@@ -79,4 +79,20 @@ GPU 없이 파이프라인만 확인하려면 `--mock --limit 20`을 붙입니�
 | S1 | Qwen3-ASR-0.6B 스트리밍(디코드 청크 0.5 s) + `adaptive_silero.AdaptiveSileroEndpointer` | 측정 완료: 잡음 CER 17.20, 제약 통과 (메인 순위 1위) |
 | S2 | 위와 같은 엔드포인터 + Qwen3-ASR-1.7B | 측정 완료: 18.46, 0 dB 반복 루프 1건 |
 | S1b | S1 + 미완결 대기 900 ms + 반복 가드(`postprocess.collapse_repeats`) | L4 측정 대기 (추정 15.95) |
+| S3 | S1b + Zeroth/FLEURS train + 학습용 잡음으로 전체 파인튜닝한 0.6B (`data/scripts/build_train_set.py`, `scripts/colab_finetune.sh`, `notebooks/finetune_colab.ipynb`) | 학습 대기 |
 | S0 | 예시 설정(에너지 엔드포인터 템플릿) | 결과 아님 |
+
+## 5. 모델 적응 (S3)
+
+학습 데이터는 평가셋과 겹치지 않아야 한다. 음성은 Zeroth·FLEURS의 **train** split(평가셋은 test), 잡음은 평가셋 160클립을 제외한
+FSD50K 클립(`data/noise_train_list.csv`), dev는 FLEURS **dev**다. 합성 방식(P.56 −26 dBov, 패딩, 클리핑 방지)은 평가셋과 같고
+SNR은 −3~20 dB 연속, 15%는 clean이다.
+
+```bash
+python data/scripts/build_train_set.py noise --per-category 150
+python data/scripts/build_train_set.py speech --workers 10           # data/train/train.jsonl (Qwen SFT 형식), dev/
+MODEL=Qwen/Qwen3-ASR-0.6B HF_REPO=<user>/campusvoice-rt-s3-0.6b bash scripts/colab_finetune.sh
+```
+
+학습은 Qwen3-ASR 공식 `finetuning/qwen3_asr_sft.py`(전체 파라미터 SFT)를 그대로 쓰고, 마지막 체크포인트를 비공개 HF 레포에 올려
+`participants/S3.json`의 `model`로 지정한다.

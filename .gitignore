@@ -7,6 +7,8 @@ __pycache__/
 # audio / large artifacts are distributed via Hugging Face Datasets
 data/eval/audio/
 data/noise/*/
+data/noise_train/*/
+data/train/
 data/raw/
 *.wav
 *.flac

@@ -1,0 +1,30 @@
+{
+  "system_id": "S3",
+  "model": "ekgP115/campusvoice-rt-s3-0.6b",
+  "mode": "streaming",
+  "description": "S1b endpointer + Qwen3-ASR-0.6B fully fine-tuned on Zeroth/FLEURS train with disjoint FSD50K noise (data/scripts/build_train_set.py, scripts/colab_finetune.sh); model id = private HF checkpoint",
+  "backend": "vllm",
+  "gpu_memory_utilization": 0.8,
+  "max_new_tokens": 256,
+  "streaming": {
+    "chunk_sec": 0.5,
+    "unfixed_chunk_num": 2,
+    "unfixed_token_num": 5
+  },
+  "postprocess": {
+    "collapse_repeats": true
+  },
+  "endpointer": {
+    "type": "custom",
+    "module": "participants.adaptive_silero",
+    "class": "AdaptiveSileroEndpointer",
+    "params": {
+      "start_threshold": 0.5,
+      "end_speech_threshold": 0.8,
+      "end_silence_threshold": 0.65,
+      "min_silence_ms": 500,
+      "min_silence_incomplete_ms": 900,
+      "use_text": true
+    }
+  }
+}
